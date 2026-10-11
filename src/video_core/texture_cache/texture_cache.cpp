@@ -300,6 +300,9 @@ void TextureCache::UpdateImageImpl(ImageId image_id) {
         TrackImage(image_id);
     }
     TouchImage(image);
+    // A write on an unprotected page must invalidate authority before an alias can copy
+    // older GPU contents over it, including when this image does not own the backing.
+    ResolveMaybeCpuDirty(image);
     if (False(image.flags & (ImageFlagBits::Aliased | ImageFlagBits::Dirty))) [[likely]] {
         return;
     }
@@ -726,13 +729,22 @@ bool TextureCache::DownloadImageMemory(ImageId image_id, bool validate_identity,
 }
 
 void TextureCache::MarkAsMaybeDirty(ImageId image_id, Image& image) {
-    if (image.hash == 0) {
-        // Initialize hash
-        const u8* addr = std::bit_cast<u8*>(image.info.guest_address);
-        image.hash = XXH3_64bits(addr, image.info.guest_size);
-    }
-    image.flags |= ImageFlagBits::MaybeCpuDirty;
+    const auto* addr = std::bit_cast<const u8*>(image.info.guest_address);
+    MarkImageMaybeCpuDirty(image.flags, image.maybe_cpu_hash,
+                          {addr, image.info.guest_size});
     UntrackImage(image_id);
+}
+
+void TextureCache::ResolveMaybeCpuDirty(Image& image) {
+    if (image.info.num_samples > 1 || False(image.flags & ImageFlagBits::MaybeCpuDirty) ||
+        True(image.flags & (ImageFlagBits::CpuDirty | ImageFlagBits::GpuDirty))) {
+        return;
+    }
+    const auto* addr = std::bit_cast<const u8*>(image.info.guest_address);
+    if (ResolveImageMaybeCpuDirty(image.flags, image.maybe_cpu_hash,
+                                 {addr, image.info.guest_size})) {
+        InvalidateAlias(image);
+    }
 }
 
 void TextureCache::InvalidateAlias(Image& image) {
@@ -1600,32 +1612,14 @@ ImageView& TextureCache::FindDepthTarget(ImageId image_id, const ImageDesc& desc
 }
 
 void TextureCache::RefreshImage(Image& image, bool overwritten) {
+    // Also covers callers which do not go through UpdateImageImpl.
+    ResolveMaybeCpuDirty(image);
     if (False(image.flags & ImageFlagBits::Dirty) || image.info.num_samples > 1) {
         return;
     }
 
     RENDERER_TRACE;
     TRACE_HINT(fmt::format("{:x}:{:x}", image.info.guest_address, image.info.guest_size));
-
-    if (True(image.flags & ImageFlagBits::MaybeCpuDirty) &&
-        False(image.flags & ImageFlagBits::CpuDirty)) {
-        // The image size should be less than page size to be considered MaybeCpuDirty
-        // So this calculation should be very uncommon and reasonably fast
-        // For now we'll just check up to 64 first pixels
-        const auto addr = std::bit_cast<u8*>(image.info.guest_address);
-        const u32 w = std::min(image.info.size.width, u32(8));
-        const u32 h = std::min(image.info.size.height, u32(8));
-
-        const u32 s_w = image.info.props.is_block ? Common::DivCeil(w, 4u) : w;
-        const u32 s_h = image.info.props.is_block ? Common::DivCeil(h, 4u) : h;
-        const u32 size = s_w * s_h * (image.info.num_bits / 8);
-        const u64 hash = XXH3_64bits(addr, size);
-        if (image.hash == hash) {
-            image.flags &= ~ImageFlagBits::MaybeCpuDirty;
-            return;
-        }
-        image.hash = hash;
-    }
 
     const u32 num_layers = image.info.resources.layers;
     const u32 num_mips = image.info.resources.levels;
@@ -1877,6 +1871,10 @@ void TextureCache::UntrackImageHead(ImageId image_id) {
     if (!image.IsTracked() || image_begin < image.track_addr) {
         return;
     }
+    if (ImageFitsTwoPages(image_begin, image.info.guest_size, TRACKER_BYTES_PER_PAGE)) {
+        MarkAsMaybeDirty(image_id, image);
+        return;
+    }
     const auto addr = tracker.GetNextPageAddr(image_begin);
     const auto size = addr - image_begin;
     image.track_addr = addr;
@@ -1893,6 +1891,11 @@ void TextureCache::UntrackImageTail(ImageId image_id) {
     auto& image = slot_images[image_id];
     const auto image_end = image.info.guest_address + image.info.guest_size;
     if (!image.IsTracked() || image.track_addr_end < image_end) {
+        return;
+    }
+    if (ImageFitsTwoPages(image.info.guest_address, image.info.guest_size,
+                         TRACKER_BYTES_PER_PAGE)) {
+        MarkAsMaybeDirty(image_id, image);
         return;
     }
     ASSERT(image.track_addr_end != 0);

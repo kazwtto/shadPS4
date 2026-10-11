@@ -406,6 +406,7 @@ private:
     void UntrackImageTail(ImageId image_id);
 
     void MarkAsMaybeDirty(ImageId image_id, Image& image);
+    void ResolveMaybeCpuDirty(Image& image);
 
     void InvalidateAlias(Image& image);
     void SynchronizeAlias(ImageId image_id);

@@ -7,6 +7,7 @@
 #include "common/incremental_id.h"
 #include "common/types.h"
 #include "video_core/renderer_vulkan/vk_common.h"
+#include "video_core/texture_cache/image_dirty.h"
 #include "video_core/texture_cache/image_info.h"
 #include "video_core/texture_cache/image_view.h"
 
@@ -30,19 +31,6 @@ VK_DEFINE_HANDLE(VmaAllocation)
 VK_DEFINE_HANDLE(VmaAllocator)
 
 namespace VideoCore {
-
-enum ImageFlagBits : u32 {
-    Empty = 0,
-    MaybeCpuDirty = 1 << 0, ///< The page this image is in was touched before the image address
-    CpuDirty = 1 << 1,      ///< Contents have been modified from the CPU
-    GpuDirty = 1 << 2, ///< Contents have been modified from the GPU (valid data in buffer cache)
-    Dirty = MaybeCpuDirty | CpuDirty | GpuDirty,
-    GpuModified = 1 << 3, ///< Contents have been modified from the GPU
-    Aliased = 1 << 4,     ///< Image shares its guest storage with another compatible image
-    Registered = 1 << 6,  ///< True when the image is registered
-    Picked = 1 << 7,      ///< Temporary flag to mark the image as picked
-};
-DECLARE_ENUM_FLAG_OPERATORS(ImageFlagBits)
 
 /// Keeps images the GPU is done with for reuse by an image of the same shape, and destroys the
 /// rest on a background thread. Most images get dedicated memory, which the driver allocates and
@@ -259,7 +247,7 @@ public:
     u64 lru_id{};
     u64 lru_tick{};
     u64 tick_accessed_last{};
-    u64 hash{};
+    u64 maybe_cpu_hash{}; ///< Guest snapshot valid for the current MaybeCpuDirty episode
     u64 content_epoch{};
 
     struct {

@@ -18,6 +18,7 @@ set(TEST_TARGETS
     shadps4_video_core_test
     shadps4_aliasing_test
     shadps4_presentation_queue_test
+    shadps4_texture_dirty_test
 )
 
 set(COMMON_TEST_SOURCES
@@ -205,6 +206,10 @@ add_executable(shadps4_cache_storage_test
 add_executable(shadps4_video_core_test ${VIDEO_CORE_TEST_SOURCES})
 add_executable(shadps4_aliasing_test ${ALIASING_TEST_SOURCES})
 add_executable(shadps4_presentation_queue_test test_presentation_queue.cpp)
+add_executable(shadps4_texture_dirty_test
+    ${CMAKE_SOURCE_DIR}/src/video_core/texture_cache/image_dirty.cpp
+    test_texture_dirty.cpp
+)
 
 foreach(t ${TEST_TARGETS})
     target_include_directories(${t} PRIVATE
@@ -262,6 +267,7 @@ target_link_libraries(shadps4_aliasing_test PRIVATE
     spdlog::spdlog
 )
 target_link_libraries(shadps4_presentation_queue_test PRIVATE GTest::gtest_main)
+target_link_libraries(shadps4_texture_dirty_test PRIVATE GTest::gtest_main xxHash::xxhash)
 
 if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR
     CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang")
