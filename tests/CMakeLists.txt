@@ -8,6 +8,10 @@ include(FetchContent)
     URL https://github.com/google/googletest/archive/refs/tags/v1.17.0.zip
 )
 FetchContent_MakeAvailable(googletest)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Clang 21 diagnoses GoogleTest 1.17's char8_t printer under its own -Werror.
+    target_compile_options(gtest PRIVATE -Wno-error=character-conversion)
+endif()
 
 set(TEST_TARGETS
     shadps4_settings_test

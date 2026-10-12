@@ -943,6 +943,15 @@ std::tuple<ImageId, int, int> TextureCache::ResolveOverlap(const ImageInfo& imag
             return {ExpandImage(image_info, cache_image_id), -1, -1};
         }
 
+        // Depth, compressed and volume reinterpretations above have dedicated copy paths.
+        // A normal view cannot change how the same guest bytes are laid out in memory.
+        if (!HasSameImageMemoryLayout(cache_image.info, image_info)) {
+            if (safe_to_delete) {
+                FreeImage(cache_image_id);
+            }
+            return {merged_image_id, -1, -1};
+        }
+
         // Size and resources are less than or equal, use image view.
         if (image_info.pixel_format != cache_image.info.pixel_format ||
             image_info.guest_size <= cache_image.info.guest_size) {
@@ -1255,23 +1264,9 @@ SHAD_NO_INLINE ImageId TextureCache::FindImageSlow(ImageDesc& desc, bool exact_f
     // Check for a perfect match first
     for (const auto& cache_id : image_ids) {
         auto& cache_image = slot_images[cache_id];
-        if (cache_image.info.guest_address != info.guest_address) {
-            continue;
+        if (IsImageCacheMatch(cache_image.info, info, exact_fmt)) {
+            image_id = cache_id;
         }
-        if (cache_image.info.guest_size != info.guest_size) {
-            continue;
-        }
-        if (cache_image.info.size != info.size) {
-            continue;
-        }
-        if (!IsVulkanFormatCompatible(cache_image.info.pixel_format, info.pixel_format) ||
-            (cache_image.info.type != info.type && info.size != Extent3D{1, 1, 1})) {
-            continue;
-        }
-        if (exact_fmt && info.pixel_format != cache_image.info.pixel_format) {
-            continue;
-        }
-        image_id = cache_id;
     }
 
     // Try to resolve overlaps (if any)
@@ -1298,7 +1293,8 @@ SHAD_NO_INLINE ImageId TextureCache::FindImageSlow(ImageDesc& desc, bool exact_f
         if (exact_fmt && info.pixel_format != image_resolved.info.pixel_format) {
             // Cannot reuse this image as we need the exact requested format.
             image_id = {};
-        } else if (image_resolved.info.resources < info.resources) {
+        } else if (image_resolved.info.resources.levels < info.resources.levels ||
+                   image_resolved.info.resources.layers < info.resources.layers) {
             // The image was clearly picked up wrong.
             FreeImage(image_id);
             image_id = {};
