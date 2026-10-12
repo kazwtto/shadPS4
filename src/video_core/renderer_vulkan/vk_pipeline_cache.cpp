@@ -93,7 +93,7 @@ struct ShaderCompileResult {
 namespace {
 
 constexpr std::array<u8, 8> NativePipelineCacheMagic{'S', 'H', 'A', 'D', 'V', 'K', 'P', 'C'};
-constexpr u32 NativePipelineCacheVersion = 5;
+constexpr u32 NativePipelineCacheVersion = 6;
 constexpr u64 MaxNativePipelineCacheSize = 512ULL * 1024 * 1024;
 
 struct NativePipelineCacheHeader {
@@ -1702,7 +1702,9 @@ PipelineCache::PipelineCache(const Instance& instance_, Scheduler& scheduler_,
         .robust_uniform_buffer_alignment = instance_.RobustUniformBufferAlignment(),
         .max_stage_uniform_buffers = instance_.GetLimits().maxPerStageDescriptorUniformBuffers,
         .max_uniform_buffers = instance_.GetLimits().maxDescriptorSetUniformBuffers,
+        .supports_image_min_lod = instance_.IsShaderImageMinLodSupported(),
     };
+    LOG_INFO(Render_Vulkan, "Shader minimum image LOD support: {}", profile.supports_image_min_lod);
     const auto initial_data = LoadNativePipelineCache();
     const vk::PipelineCacheCreateInfo cache_info{
         .initialDataSize = initial_data.size(),

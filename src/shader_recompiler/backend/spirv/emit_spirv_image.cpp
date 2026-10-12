@@ -214,6 +214,15 @@ Id EmitImageGradient(EmitContext& ctx, IR::Inst* inst, u32 handle, Id coords, Id
     ImageOperands operands;
     operands.AddDerivatives(ctx, derivatives_dx, derivatives_dy);
     operands.AddOffset(ctx, offset);
+    if (!lod_clamp.IsEmpty()) {
+        if (ctx.profile.supports_image_min_lod) {
+            ctx.AddCapability(spv::Capability::MinLod);
+            operands.Add(spv::ImageOperandsMask::MinLod, ctx.Def(lod_clamp));
+        } else {
+            LOG_WARNING(Render_Recompiler,
+                        "Image gradient minimum LOD is unsupported by the device");
+        }
+    }
     const Id sample = ctx.OpImageSampleExplicitLod(result_type, sampled_image, coords,
                                                    operands.mask, operands.operands);
     return texture.is_integer ? ctx.OpBitcast(ctx.F32[4], sample) : sample;

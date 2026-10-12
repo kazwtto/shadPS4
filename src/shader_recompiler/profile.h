@@ -59,6 +59,7 @@ struct Profile {
     u32 robust_uniform_buffer_alignment{1};
     u32 max_stage_uniform_buffers{};
     u32 max_uniform_buffers{};
+    bool supports_image_min_lod{};
 
     bool operator==(const Profile&) const = default;
 };

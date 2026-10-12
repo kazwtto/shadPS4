@@ -14,8 +14,9 @@ void assert_fail_impl() {
 }
 
 namespace Common::Log {
+std::array<Level, NUM_LOG_CLASSES> g_class_levels{};
 void VLog(Class, Level, const char* file, int line, const char* func, fmt::string_view,
           fmt::format_args) noexcept {
-    std::fprintf(stderr, "Unexpected texture test failure: %s:%d %s\n", file, line, func);
+    std::fprintf(stderr, "Test diagnostic: %s:%d %s\n", file, line, func);
 }
 } // namespace Common::Log

@@ -515,6 +515,7 @@ bool Instance::CreateDevice() {
                 .shaderFloat64 = features.shaderFloat64,
                 .shaderInt64 = features.shaderInt64,
                 .shaderInt16 = features.shaderInt16,
+                .shaderResourceMinLod = features.shaderResourceMinLod,
             },
         },
         vk::PhysicalDeviceVulkan11Features{

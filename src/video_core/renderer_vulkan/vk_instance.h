@@ -193,6 +193,11 @@ public:
         return features.shaderFloat64;
     }
 
+    /// Returns true if image operations support a shader-provided minimum LOD.
+    bool IsShaderImageMinLodSupported() const {
+        return features.shaderResourceMinLod;
+    }
+
     /// Returns true if 64-bit ints are supported in shaders
     bool IsShaderInt64Supported() const {
         return features.shaderInt64;
