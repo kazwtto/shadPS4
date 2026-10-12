@@ -11,6 +11,13 @@ namespace VideoCore {
 
 struct ImageInfo;
 
+/// Descriptors with the same dimensions/address can still interpret guest bytes differently.
+[[nodiscard]] bool HasSameImageMemoryLayout(const ImageInfo& lhs, const ImageInfo& rhs);
+
+/// Checks resource coverage independently for mip levels and array layers.
+[[nodiscard]] bool IsImageCacheMatch(const ImageInfo& cached, const ImageInfo& requested,
+                                     bool exact_format);
+
 [[nodiscard]] std::optional<Extent3D> GetAliasCopyExtent(const ImageInfo& src,
                                                          const ImageInfo& dst);
 

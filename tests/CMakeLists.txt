@@ -88,6 +88,7 @@ set(ALIASING_TEST_SOURCES
     ${CMAKE_SOURCE_DIR}/src/video_core/texture_cache/aliasing.cpp
     ${CMAKE_SOURCE_DIR}/src/video_core/texture_cache/host_compatibility.cpp
     test_aliasing.cpp
+    stubs/texture_test_logging.cpp
 )
 set(GCN_TEST_SOURCES
     # Under test
@@ -265,6 +266,7 @@ target_link_libraries(shadps4_aliasing_test PRIVATE
     GTest::gtest_main
     Vulkan::Headers
     spdlog::spdlog
+    fmt::fmt
 )
 target_link_libraries(shadps4_presentation_queue_test PRIVATE GTest::gtest_main)
 target_link_libraries(shadps4_texture_dirty_test PRIVATE GTest::gtest_main xxHash::xxhash)

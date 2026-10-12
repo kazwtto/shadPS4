@@ -69,5 +69,67 @@ TEST(AliasingTest, RejectsIncompatibleIntersectionCopies) {
     EXPECT_FALSE(GetAliasCopyExtent(src, dst).has_value());
 }
 
+TEST(ImageCacheMatchTest, RejectsLinearAndTiledImagesWithIdenticalByteSize) {
+    ImageInfo cached = MakeImageInfo({128, 128, 1});
+    cached.guest_size = 65536;
+    ImageInfo requested = cached;
+    requested.props.is_tiled = true;
+    requested.tile_mode = AmdGpu::TileMode::Thin1DThin;
+    requested.array_mode = AmdGpu::ArrayMode::Array1DTiledThin1;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+}
+
+TEST(ImageCacheMatchTest, RejectsChangedPitchSwizzleAndSamples) {
+    const ImageInfo cached = MakeImageInfo({128, 128, 1});
+    ImageInfo requested = cached;
+    ++requested.pitch;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+    requested = cached;
+    requested.bank_swizzle = 1;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+    requested = cached;
+    requested.alt_tile = true;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+    requested = cached;
+    requested.num_samples = 2;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+}
+
+TEST(ImageCacheMatchTest, ExtraMipsDoNotCompensateForMissingArrayLayers) {
+    ImageInfo cached = MakeImageInfo({128, 128, 1});
+    ImageInfo requested = cached;
+    cached.resources = {4, 1};
+    requested.resources = {1, 6};
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+}
+
+TEST(ImageCacheMatchTest, PreservesCompatibleFormatViewsAndExactFormatRequests) {
+    const ImageInfo cached = MakeImageInfo({128, 128, 1});
+    ImageInfo requested = cached;
+    requested.pixel_format = vk::Format::eR8G8B8A8Srgb;
+    EXPECT_TRUE(IsImageCacheMatch(cached, requested, false));
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, true));
+    EXPECT_TRUE(IsImageCacheMatch(cached, cached, true));
+}
+
+TEST(ImageCacheMatchTest, PreservesSingleTexelTypeExceptionWithSameMemoryLayout) {
+    const ImageInfo cached = MakeImageInfo({1, 1, 1});
+    ImageInfo requested = cached;
+    requested.type = AmdGpu::ImageType::Color1D;
+    EXPECT_TRUE(IsImageCacheMatch(cached, requested, false));
+    requested.pitch += 1;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+}
+
+TEST(ImageCacheMatchTest, RejectsDepthAndBlockInterpretationChanges) {
+    const ImageInfo cached = MakeImageInfo({128, 128, 1});
+    ImageInfo requested = cached;
+    requested.props.is_depth = true;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+    requested = cached;
+    requested.props.is_block = true;
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+}
+
 } // namespace
 } // namespace VideoCore

@@ -142,8 +142,8 @@ public:
     bool ProcessDownloadImages(const DownloadContext& context, bool* gpu_resident = nullptr);
 
     [[nodiscard]] bool PromotePendingDownloadAuthority(ImageId image_id, u64 image_uid,
-                                                        u64 resource_version,
-                                                        std::shared_ptr<GpuAuthorityShadow>* shadow);
+                                                       u64 resource_version,
+                                                       std::shared_ptr<GpuAuthorityShadow>* shadow);
     void PruneSupersededPendingDownloads(u64 image_uid, u64 superseded_version);
     void ScheduleComputeDownload(ImageId image_id);
     void ScheduleRenderTargetDownload(ImageId image_id);
@@ -151,8 +151,7 @@ public:
     [[nodiscard]] std::optional<PendingFastpathCandidate> TakePendingFastpathCandidate();
 
     [[nodiscard]] bool IsGpuAuthorityImageCurrent(ImageId image_id, u64 image_uid,
-                                                  u64 resource_version, VAddr address,
-                                                  size_t size);
+                                                  u64 resource_version, VAddr address, size_t size);
 
     void WaitGpuAuthorityShadow(const std::shared_ptr<GpuAuthorityShadow>& shadow);
     bool MaterializeGpuAuthority(const std::shared_ptr<GpuAuthorityShadow>& shadow,
@@ -446,9 +445,9 @@ private:
 
 private:
     struct ExactImageCacheKey {
-        std::array<u64, 6> words{};
+        std::array<u64, 9> words{};
     };
-    static_assert(sizeof(ExactImageCacheKey) == 48);
+    static_assert(sizeof(ExactImageCacheKey) == 72);
 
     struct ExactImageCacheEntry {
         ExactImageCacheKey key{};

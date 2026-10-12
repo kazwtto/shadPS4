@@ -11,14 +11,31 @@
 
 namespace VideoCore {
 
+bool HasSameImageMemoryLayout(const ImageInfo& lhs, const ImageInfo& rhs) {
+    return lhs.num_bits == rhs.num_bits && lhs.num_samples == rhs.num_samples &&
+           lhs.pitch == rhs.pitch && lhs.tile_mode == rhs.tile_mode &&
+           lhs.array_mode == rhs.array_mode && lhs.bank_swizzle == rhs.bank_swizzle &&
+           lhs.alt_tile == rhs.alt_tile && lhs.props.is_tiled == rhs.props.is_tiled &&
+           lhs.props.is_block == rhs.props.is_block && lhs.props.is_pow2 == rhs.props.is_pow2 &&
+           lhs.props.is_volume == rhs.props.is_volume && lhs.props.is_depth == rhs.props.is_depth &&
+           lhs.props.has_stencil == rhs.props.has_stencil;
+}
+
+bool IsImageCacheMatch(const ImageInfo& cached, const ImageInfo& requested, bool exact_format) {
+    return cached.guest_address == requested.guest_address &&
+           cached.guest_size == requested.guest_size && cached.size == requested.size &&
+           HasSameImageMemoryLayout(cached, requested) &&
+           IsVulkanFormatCompatible(cached.pixel_format, requested.pixel_format) &&
+           (cached.type == requested.type || requested.size == Extent3D{1, 1, 1}) &&
+           (!exact_format || cached.pixel_format == requested.pixel_format) &&
+           cached.resources.levels >= requested.resources.levels &&
+           cached.resources.layers >= requested.resources.layers;
+}
+
 std::optional<Extent3D> GetAliasCopyExtent(const ImageInfo& src, const ImageInfo& dst) {
-    const bool same_layout =
-        src.guest_address == dst.guest_address && src.num_bits == dst.num_bits &&
-        src.num_samples == dst.num_samples && !src.props.is_depth && !dst.props.is_depth &&
-        src.props.is_block == dst.props.is_block && src.props.is_pow2 == dst.props.is_pow2 &&
-        src.type == dst.type && src.pitch == dst.pitch && src.tile_mode == dst.tile_mode &&
-        src.array_mode == dst.array_mode && src.bank_swizzle == dst.bank_swizzle &&
-        src.alt_tile == dst.alt_tile;
+    const bool same_layout = src.guest_address == dst.guest_address &&
+                             HasSameImageMemoryLayout(src, dst) && !src.props.is_depth &&
+                             !dst.props.is_depth && src.type == dst.type;
     if (!same_layout) {
         return std::nullopt;
     }
