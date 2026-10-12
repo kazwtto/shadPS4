@@ -223,6 +223,11 @@ set_source_files_properties(src/dist/shadps4.rc PROPERTIES COMPILE_DEFINITIONS "
 set(APP_VERSION_NUM "${EMULATOR_VERSION_MAJOR}.${EMULATOR_VERSION_MINOR}.${EMULATOR_VERSION_PATCH}")
 set(APP_VERSION "${APP_VERSION_NUM} WIP")
 set(APP_IS_RELEASE false)
+# Git remotes may be Windows paths. Escape metadata embedded in C++ string literals.
+foreach(SCM_LITERAL GIT_REV GIT_BRANCH GIT_DESC GIT_REMOTE_NAME GIT_REMOTE_URL)
+    string(REPLACE "\\" "\\\\" ${SCM_LITERAL} "${${SCM_LITERAL}}")
+    string(REPLACE "\"" "\\\"" ${SCM_LITERAL} "${${SCM_LITERAL}}")
+endforeach()
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/src/common/scm_rev.cpp.in" "${CMAKE_CURRENT_BINARY_DIR}/src/common/scm_rev.cpp" @ONLY)
 
 message("-- end git things, remote: ${GIT_REMOTE_NAME}, branch: ${GIT_BRANCH}, link: ${GIT_REMOTE_URL}")
