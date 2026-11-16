@@ -3,6 +3,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <charconv>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -41,8 +43,6 @@ using Clock = std::chrono::steady_clock;
             .count());
 }
 
-/// Time a worker keeps polling for new jobs before parking.
-constexpr u64 WorkerSpinNs = 40'000;
 /// Time a waiter keeps polling for completion before parking.
 constexpr u64 WaiterSpinNs = 20'000;
 
@@ -77,16 +77,28 @@ GuestCopyEngine::~GuestCopyEngine() {
     Stop();
 }
 
-void GuestCopyEngine::Start(u32 num_workers) {
+void GuestCopyEngine::Start(u32 num_workers, u32 idle_spin_us) {
     if (active.load(std::memory_order_acquire) || num_workers == 0) {
         return;
     }
+    if (const char* value = std::getenv("SHADPS4_COPY_SPIN_US")) {
+        u32 override_us{};
+        const auto end = value + std::strlen(value);
+        const auto parsed = std::from_chars(value, end, override_us);
+        if (parsed.ec == std::errc{} && parsed.ptr == end && override_us <= 1000) {
+            idle_spin_us = override_us;
+        } else {
+            LOG_WARNING(Render_Vulkan, "Invalid SHADPS4_COPY_SPIN_US; using {} us", idle_spin_us);
+        }
+    }
+    worker_spin_ns = u64{idle_spin_us} * 1000;
     workers.reserve(num_workers);
     for (u32 i = 0; i < num_workers; ++i) {
         workers.emplace_back([this, i](std::stop_token stoken) { WorkerLoop(stoken, i); });
     }
     active.store(true, std::memory_order_release);
-    LOG_INFO(Render_Vulkan, "Guest copy engine started with {} workers", num_workers);
+    LOG_INFO(Render_Vulkan, "Guest copy engine started with {} workers, idle spin {} us",
+             num_workers, idle_spin_us);
 }
 
 void GuestCopyEngine::Stop() {
@@ -457,7 +469,7 @@ void GuestCopyEngine::WorkerLoop(std::stop_token stoken, u32 index) {
         spinning_workers.fetch_add(1, std::memory_order_seq_cst);
         const u64 spin_start = NowNs();
         bool found = false;
-        while (NowNs() - spin_start < WorkerSpinNs) {
+        while (NowNs() - spin_start < worker_spin_ns) {
             for (u32 i = 0; i < 64; ++i) {
                 GUEST_COPY_PAUSE();
             }

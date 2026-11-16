@@ -3,7 +3,12 @@
 
 // Based on imgui_impl_sdl3.cpp from Dear ImGui repository
 
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
+#include <fmt/format.h>
 #include <imgui.h>
+#include "common/logging/log.h"
 #include "core/debug_state.h"
 #include "core/emulator_settings.h"
 #include "core/memory.h"
@@ -32,6 +37,12 @@ struct SdlData {
     SDL_WindowID window_id{};
     Uint64 time{};
     Uint64 nonReusedtime{};
+    // Optional buffered wall-clock intervals of newly presented guest frames. This does not
+    // issue GPU queries and excludes presentation reuses, like the FPS overlay below.
+    bool frame_log_initialized{};
+    std::ofstream frame_log;
+    Uint64 frame_log_origin{};
+    Uint64 frame_log_count{};
     const char* clipboard_text_data{};
 
     // IME handling
@@ -810,6 +821,17 @@ void NewFrame(bool is_reusing_frame) {
     SdlData* bd = GetBackendData();
     IM_ASSERT(bd != nullptr && "No platform backend to shutdown, or already shutdown?");
     ImGuiIO& io = ImGui::GetIO();
+    if (!bd->frame_log_initialized) {
+        bd->frame_log_initialized = true;
+        if (const char* path = std::getenv("SHADPS4_FRAME_LOG"); path && path[0]) {
+            bd->frame_log.open(std::filesystem::u8path(path), std::ios::out | std::ios::trunc);
+            if (bd->frame_log) {
+                bd->frame_log << "frame\telapsed_s\tinterval_ms\n";
+            } else {
+                LOG_WARNING(Render, "Cannot open optional frame interval log");
+            }
+        }
+    }
 
     // Setup time step (we don't use SDL_GetTicks() because it is using millisecond resolution)
     // (Accept SDL_GetPerformanceCounter() not returning a monotonically increasing value. Happens
@@ -825,11 +847,27 @@ void NewFrame(bool is_reusing_frame) {
     if (!is_reusing_frame) {
         if (current_time <= bd->nonReusedtime)
             current_time = bd->nonReusedtime + 1;
+        const Uint64 previous_time = bd->nonReusedtime;
         float deltaTime =
             bd->nonReusedtime > 0
                 ? (float)((double)(current_time - bd->nonReusedtime) / (double)frequency)
                 : 1.0f / 60.0f;
         bd->nonReusedtime = current_time;
+        if (bd->frame_log.is_open() && bd->frame_log.good()) {
+            if (previous_time == 0) {
+                bd->frame_log_origin = current_time;
+            } else {
+                fmt::memory_buffer row;
+                fmt::format_to(std::back_inserter(row), "{}\t{:.9f}\t{:.6f}\n",
+                               ++bd->frame_log_count,
+                               double(current_time - bd->frame_log_origin) / double(frequency),
+                               double(current_time - previous_time) * 1000.0 / double(frequency));
+                bd->frame_log.write(row.data(), static_cast<std::streamsize>(row.size()));
+                if (bd->frame_log_count % 120 == 0) {
+                    bd->frame_log.flush();
+                }
+            }
+        }
         DebugState.FrameDeltaTime = deltaTime;
 
         int& frameIdx = bd->framerateSecPerFrameIdx;

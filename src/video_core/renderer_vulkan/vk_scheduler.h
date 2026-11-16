@@ -110,6 +110,35 @@ struct SubmitInfo {
     }
 };
 
+// Stable identifiers in shader0 of render_begin/render_end timing rows. They identify
+// the operation that closed the preceding scope, not a shader or a redundant barrier.
+enum class RenderEndReason : u32 {
+    Unknown = 0,
+    RenderState = 1,
+    Submission = 2,
+    ProfilingFrame = 3,
+    BufferVisibility = 4,
+    TextureVisibility = 5,
+    ImageTransition = 6,
+    GlobalBarrier = 7,
+    CpSync = 8,
+    Compute = 9,
+    BufferUpload = 10,
+    BufferReadback = 11,
+    BufferCopy = 12,
+    ImageUpload = 13,
+    ImageReadback = 14,
+    ImageCopy = 15,
+    Resolve = 16,
+    Clear = 17,
+    SampleCount = 18,
+    Tiling = 19,
+    ImageBlit = 20,
+    BufferFault = 21,
+    ShaderHle = 22,
+    Presentation = 23,
+};
+
 using Viewports = boost::container::static_vector<vk::Viewport, AmdGpu::NUM_VIEWPORTS>;
 using Scissors = boost::container::static_vector<vk::Rect2D, AmdGpu::NUM_VIEWPORTS>;
 using ColorWriteMasks = std::array<vk::ColorComponentFlags, AmdGpu::NUM_COLOR_BUFFERS>;
@@ -491,11 +520,11 @@ public:
     }
 
     /// Ends current rendering scope.
-    void EndRendering() {
+    void EndRendering(RenderEndReason reason = RenderEndReason::Unknown) {
         if (!is_rendering) {
             return;
         }
-        EndRenderingScope();
+        EndRenderingScope(reason);
     }
 
     /// Returns the current render state.
@@ -730,7 +759,7 @@ private:
     /// Hands the filled chunk to the recording thread.
     void DispatchWork();
     void BeginNewRendering(const RenderState& new_state);
-    void EndRenderingScope();
+    void EndRenderingScope(RenderEndReason reason);
 
     /// Records func after the current chunk filled up. Out of line so that recording a command
     /// does not carry the chunk handover.
@@ -828,6 +857,7 @@ private:
     u64 record_tick{};
     std::jthread record_thread;
     RenderState render_state;
+    RenderEndReason last_render_end_reason{RenderEndReason::Unknown};
     bool is_rendering = false;
     tracy::VkCtxScope* profiler_scope{};
 };

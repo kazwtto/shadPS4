@@ -20,4 +20,9 @@ namespace Vulkan {
 
 [[nodiscard]] vk::ShaderModule CompileSPV(std::span<const u32> code, vk::Device device);
 
+/// Returns true when the module was created by CompileSPV from a fragment shader whose entry point
+/// does nothing observable: no outputs, no discard, no depth/stencil replacement and no memory or
+/// image access. Callers must still verify that the pipeline has no color attachments.
+[[nodiscard]] bool IsEmptyFragmentModule(vk::ShaderModule module);
+
 } // namespace Vulkan

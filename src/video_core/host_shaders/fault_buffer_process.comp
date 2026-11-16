@@ -20,6 +20,11 @@ layout(std430, binding = 1) buffer output_buf32 {
 void main() {
     const uint id = gl_GlobalInvocationID.x;
     uint word = fault_buffer[id];
+    // Most words contain no faults. Leave their existing zero in place instead
+    // of writing the entire address-space bitmap on every processing pass.
+    if (word == 0u) {
+        return;
+    }
     fault_buffer[id] = 0u;
     const uint base_bit = id * 32u;
     while (word != 0u) {

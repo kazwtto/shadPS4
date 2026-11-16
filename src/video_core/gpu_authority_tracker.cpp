@@ -10,6 +10,8 @@
 #include "common/logging/log.h"
 #include "core/memory.h"
 #include "video_core/gpu_authority_tracker.h"
+#include "video_core/authority_read_watch.h"
+#include "video_core/gow3_diagnostics.h"
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
 #include "video_core/texture_cache/texture_cache.h"
 
@@ -17,12 +19,8 @@ namespace VideoCore {
 
 namespace {
 
-constexpr VAddr ReadWatchPageMask = 4095;
-
 std::pair<VAddr, size_t> GetReadWatchRange(VAddr addr, size_t size) {
-    const VAddr begin = addr & ~ReadWatchPageMask;
-    const VAddr end = (addr + size + ReadWatchPageMask) & ~ReadWatchPageMask;
-    return {begin, end - begin};
+    return RoundReadWatchRange(addr, size);
 }
 
 constexpr bool HasGpuAuthority(GpuAuthorityState state) noexcept {
@@ -59,6 +57,10 @@ void GpuAuthorityTracker::SetRasterizer(Vulkan::Rasterizer* rasterizer_) noexcep
 
 SHAD_NO_INLINE bool GpuAuthorityTracker::ResolveGow3FastpathActive() const noexcept {
     static const bool active = [] {
+        if (Gow3Diagnostics::ConservativeAuthority()) {
+            LOG_INFO(Render_Vulkan, "GoW3 diagnostic: conservative authority/download/fence path");
+            return false;
+        }
         const auto serial = Common::ElfInfo::Instance().GameSerial();
         return serial == "CUSA01623" || serial == "CUSA01715" || serial == "CUSA01716" ||
                serial == "CUSA01720" || serial == "CUSA01740" || serial == "CUSA01741";
@@ -207,9 +209,9 @@ void GpuAuthorityTracker::RetireVirtualFenceLocked(
     }
 }
 
-std::vector<std::shared_ptr<GpuAuthorityEntry>> GpuAuthorityTracker::FindOverlaps(
+GpuAuthorityTracker::AuthorityEntries GpuAuthorityTracker::FindOverlaps(
     VAddr addr, size_t size) const {
-    std::vector<std::shared_ptr<GpuAuthorityEntry>> result;
+    AuthorityEntries result;
     if (!IsGow3FastpathActive()) {
         return result;
     }
@@ -253,13 +255,19 @@ std::shared_ptr<GpuAuthorityEntry> GpuAuthorityTracker::GetAuthorityForRange(
     std::scoped_lock lock{tracker_mutex};
     for (auto it = authorities.rbegin(); it != authorities.rend(); ++it) {
         const auto& entry = *it;
-        if (addr < entry->guest_begin || size > entry->download_size ||
-            addr - entry->guest_begin > entry->download_size - size) {
+        if (std::max(entry->guest_begin, addr) >= std::min(entry->guest_end, addr + size)) {
             continue;
         }
         std::scoped_lock entry_lock{*entry->entry_mutex};
-        if (entry->state != GpuAuthorityState::GpuAuthoritative) {
+        if (!HasGpuAuthority(entry->state)) {
             continue;
+        }
+        // A newer partial write must not be bypassed by selecting an older, larger image.
+        // The fallback materializes/composes overlapping authorities in registration order.
+        if (entry->state != GpuAuthorityState::GpuAuthoritative ||
+            addr < entry->guest_begin || size > entry->download_size ||
+            addr - entry->guest_begin > entry->download_size - size) {
+            return nullptr;
         }
         return entry;
     }
@@ -352,16 +360,20 @@ std::shared_ptr<GpuAuthorityShadow> GpuAuthorityTracker::AcquireGpuShadowForImag
     std::scoped_lock lock{tracker_mutex};
     for (auto it = authorities.rbegin(); it != authorities.rend(); ++it) {
         const auto& entry = *it;
-        if (entry->guest_begin != addr || entry->download_size != size) {
+        if (std::max(entry->guest_begin, addr) >= std::min(entry->guest_end, addr + size)) {
             continue;
         }
         std::scoped_lock entry_lock{*entry->entry_mutex};
-        if (entry->state != GpuAuthorityState::GpuAuthoritative || !entry->shadow) {
+        if (!HasGpuAuthority(entry->state)) {
             continue;
+        }
+        if (entry->state != GpuAuthorityState::GpuAuthoritative || !entry->shadow ||
+            entry->guest_begin != addr || entry->download_size != size) {
+            return nullptr;
         }
         std::scoped_lock shadow_lock{entry->shadow->data_mutex};
         if (entry->shadow->IsReleased() || entry->shadow->owned_data) {
-            continue;
+            return nullptr;
         }
         entry->shadow->ExtendLifetime(rasterizer ? rasterizer->CurrentTick()
                                                  : entry->shadow->Tick());
@@ -377,13 +389,19 @@ void GpuAuthorityTracker::RefreshAuthorityReadWatches(VAddr addr, size_t size) {
     std::scoped_lock lock{tracker_mutex};
     RangeSet required_ranges;
     for (const auto& entry : authorities) {
+        // The registered address/size are immutable. Filter page-rounded intervals before
+        // locking an unrelated entry; byte-only filtering could miss a shared watched page.
+        const auto [required_addr, required_size] =
+            GetReadWatchRange(entry->guest_begin, entry->download_size);
+        const auto clipped = ClipReadWatchRange(required_addr, required_size, watch_addr, watch_size);
+        if (!clipped) {
+            continue;
+        }
         std::scoped_lock entry_lock{*entry->entry_mutex};
         if (!HasGpuAuthority(entry->state)) {
             continue;
         }
-        const auto [required_addr, required_size] =
-            GetReadWatchRange(entry->guest_begin, entry->download_size);
-        required_ranges.Add(required_addr, required_size);
+        required_ranges.Add(clipped->first, clipped->second);
     }
     authority_read_watch_ranges.ForEachInRange(
         watch_addr, watch_size, [&](VAddr range_addr, VAddr range_end) {
@@ -584,6 +602,15 @@ bool GpuAuthorityTracker::ResolveForRamRead(VAddr addr, size_t size, bool keep_g
         }
 
         if (entry->state == GpuAuthorityState::Materializing) {
+            // A CPU materializer may be waiting for a shadow recorded in the GCP's
+            // current, unsubmitted command buffer. The GCP must submit that work
+            // before waiting for the materializer, without holding its entry lock.
+            if (rasterizer && rasterizer->IsGpuThread()) {
+                auto authority_shadow = entry->shadow;
+                entry_lk.unlock();
+                rasterizer->GetTextureCache().WaitGpuAuthorityShadow(authority_shadow);
+                entry_lk.lock();
+            }
             entry->cv->wait(entry_lk, [&] { return entry->state != GpuAuthorityState::Materializing; });
             if (entry->state != GpuAuthorityState::HostCurrent) {
                 all_succeeded = false;

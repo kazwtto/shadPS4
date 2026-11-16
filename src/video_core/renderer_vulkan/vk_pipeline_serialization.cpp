@@ -9,6 +9,7 @@
 #include "shader_recompiler/info.h"
 #include "video_core/cache_storage.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
+#include "video_core/renderer_vulkan/vk_execution_policy.h"
 #include "video_core/renderer_vulkan/vk_pipeline_cache.h"
 #include "video_core/renderer_vulkan/vk_pipeline_serialization.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
@@ -23,7 +24,7 @@ namespace Vulkan {
 
 void RegisterPipelineData(const ComputePipelineKey& key,
                           ComputePipeline::SerializationSupport& sdata) {
-    if (!Storage::DataBase::Instance().IsOpened()) {
+    if (GetExecutionPolicy().lazy || !Storage::DataBase::Instance().IsOpened()) {
         return;
     }
 
@@ -42,7 +43,7 @@ void RegisterPipelineData(const ComputePipelineKey& key,
 
 void RegisterPipelineData(const GraphicsPipelineKey& key, u64 hash,
                           GraphicsPipeline::SerializationSupport& sdata) {
-    if (!Storage::DataBase::Instance().IsOpened()) {
+    if (GetExecutionPolicy().lazy || !Storage::DataBase::Instance().IsOpened()) {
         return;
     }
 
@@ -63,7 +64,7 @@ void RegisterShaderMeta(const Shader::Info& info,
                         const std::optional<Shader::Gcn::FetchShaderData>& fetch_shader_data,
                         const Shader::StageSpecialization& spec, size_t perm_hash,
                         size_t perm_idx) {
-    if (!Storage::DataBase::Instance().IsOpened()) {
+    if (GetExecutionPolicy().lazy || !Storage::DataBase::Instance().IsOpened()) {
         return;
     }
 
@@ -84,7 +85,7 @@ void RegisterShaderMeta(const Shader::Info& info,
 }
 
 void RegisterShaderBinary(std::vector<u32>&& spv, u64 pgm_hash, size_t perm_idx) {
-    if (!Storage::DataBase::Instance().IsOpened()) {
+    if (GetExecutionPolicy().lazy || !Storage::DataBase::Instance().IsOpened()) {
         return;
     }
 
@@ -322,6 +323,18 @@ bool PipelineCache::LoadPipelineStage(Serialization::Archive& ar, size_t stage,
 
 void PipelineCache::WarmUp() {
     if (!EmulatorSettings.IsPipelineCacheEnabled()) {
+        return;
+    }
+
+    if (GetExecutionPolicy().lazy) {
+        // LoadNativePipelineCache already opened the isolated native-only store,
+        // unless disabled by the precise policy. Never restore guest programs,
+        // permutation indices or pipeline keys in this mode. Guest translation
+        // and pipeline creation happen on first use, against current descriptors.
+        if (Storage::DataBase::Instance().IsOpened()) {
+            (void)Storage::DataBase::Instance().FinishPreload();
+        }
+        LOG_INFO(Render, "Lazy pipelines: native driver cache only; guest states rebuilt on demand");
         return;
     }
 

@@ -21,4 +21,7 @@ struct ImageInfo;
 [[nodiscard]] std::optional<Extent3D> GetAliasCopyExtent(const ImageInfo& src,
                                                          const ImageInfo& dst);
 
+/// A view cannot change mip-zero geometry. Only split when both copy directions are supported.
+[[nodiscard]] bool RequiresSeparateAliasImage(const ImageInfo& cached, const ImageInfo& requested);
+
 } // namespace VideoCore

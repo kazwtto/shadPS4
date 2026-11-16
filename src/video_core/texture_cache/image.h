@@ -10,6 +10,7 @@
 #include "video_core/texture_cache/image_dirty.h"
 #include "video_core/texture_cache/image_info.h"
 #include "video_core/texture_cache/image_view.h"
+#include "video_core/texture_cache/mip_upload_baseline.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -180,6 +181,8 @@ struct Image {
                         std::optional<SubresourceRange> subres_range);
     void Transit(vk::ImageLayout dst_layout, vk::AccessFlags2 dst_mask,
                  std::optional<SubresourceRange> range);
+    /// True only when the selected subresources already have this layout.
+    bool IsRangeInLayout(vk::ImageLayout layout, const SubresourceRange& range) const;
     void Upload(std::span<const vk::BufferImageCopy> upload_copies, vk::Buffer buffer);
     void Download(std::span<const vk::BufferImageCopy> download_copies, vk::Buffer buffer,
                   u64 offset, u64 download_size, bool for_tiling = false);
@@ -240,7 +243,7 @@ public:
     };
     std::deque<BackingImage> backing_images;
     BackingImage* backing{};
-    boost::container::static_vector<u64, 16> mip_hashes{};
+    MipUploadBaseline upload_baseline;
     u64 image_uid{};
     std::shared_ptr<ImageReadbackToken> readback_token;
     u64 alias_generation{};

@@ -3,6 +3,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <cstring>
 #include <limits>
 #include <map>
 #include <memory>
@@ -21,12 +22,15 @@
 #include "video_core/amdgpu/liverpool.h"
 #include "video_core/buffer_cache/buffer_cache.h"
 #include "video_core/buffer_cache/region_definitions.h"
+#include "video_core/cache_memory_budget.h"
 #include "video_core/gpu_authority_tracker.h"
+#include "video_core/gow3_diagnostics.h"
 #include "video_core/page_manager.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/texture_cache/aliasing.h"
 #include "video_core/texture_cache/host_compatibility.h"
+#include "video_core/texture_cache/image_readback_layout.h"
 #include "video_core/texture_cache/texture_cache.h"
 #include "video_core/texture_cache/tile_manager.h"
 
@@ -51,6 +55,7 @@ struct PendingImageReadback {
     Buffer* buffer{};
     u64 buffer_offset{};
     u64 size{};
+    ImageReadbackLayout layout;
     boost::container::small_vector<Page, 4> pages;
     bool tracked{};
 };
@@ -127,12 +132,15 @@ public:
                 const VAddr begin = std::max<VAddr>(pending.address, page.address);
                 const VAddr end = std::min<VAddr>(pending.address + pending.size,
                                                   page.address + PageSize(page.address));
-                const u64 size = end - begin;
-                if (Core::Memory::Instance()->TryWriteBacking(
-                        std::bit_cast<u8*>(begin), pending.data + (begin - pending.address), size,
-                        Core::MemoryWriteOrigin::GpuCompletion)) {
-                    committed_bytes += size;
-                }
+                pending.layout.ForEachSpan(begin - pending.address, end - begin,
+                    [&](u64 offset, u64 size) {
+                        if (Core::Memory::Instance()->TryWriteBacking(
+                                std::bit_cast<u8*>(pending.address + offset),
+                                pending.data + offset, size,
+                                Core::MemoryWriteOrigin::GpuCompletion)) {
+                            committed_bytes += size;
+                        }
+                    });
             }
         }
         Release(pending);
@@ -199,6 +207,21 @@ private:
            info.resources.layers * (info.num_bits / 8);
 }
 
+[[nodiscard]] static ImageReadbackLayout GetReadbackLayout(const ImageInfo& info) {
+    // Keep the existing representation of other formats; linear color is the path whose
+    // buffer-image row stride and guest byte layout agree without detiling/aspect conversion.
+    if (!info.props.is_tiled && !info.props.is_block && !info.props.is_depth &&
+        info.num_samples == 1 && info.num_bits != 0 && info.num_bits % 8 == 0) {
+        const u64 bytes_per_texel = info.num_bits / 8;
+        const auto layout = ImageReadbackLayout::Make(
+            info.size.width * bytes_per_texel, info.pitch * bytes_per_texel,
+            u64{info.size.height} * info.size.depth * info.resources.layers);
+        ASSERT(layout.has_value());
+        return *layout;
+    }
+    return ImageReadbackLayout::Packed(GetDownloadSize(info));
+}
+
 [[nodiscard]] static bool Covers(const Extent3D& extent, const ImageInfo& info) {
     return extent.width == info.size.width && extent.height == info.size.height &&
            extent.depth == info.size.depth;
@@ -253,19 +276,10 @@ TextureCache::TextureCache(const Vulkan::Instance& instance_, Vulkan::Scheduler&
         return;
     }
 
-    const s64 device_local_memory = static_cast<s64>(instance.GetTotalMemoryBudget());
-    const s64 min_spacing_expected = device_local_memory - 1_GB;
-    const s64 min_spacing_critical = device_local_memory - 512_MB;
-    const s64 mem_threshold = std::min<s64>(device_local_memory, TARGET_GC_THRESHOLD);
-    const s64 min_vacancy_expected = (6 * mem_threshold) / 10;
-    const s64 min_vacancy_critical = (2 * mem_threshold) / 10;
-    pressure_gc_memory = static_cast<u64>(
-        std::max<u64>(std::min(device_local_memory - min_vacancy_expected, min_spacing_expected),
-                      DEFAULT_PRESSURE_GC_MEMORY));
-    critical_gc_memory = static_cast<u64>(
-        std::max<u64>(std::min(device_local_memory - min_vacancy_critical, min_spacing_critical),
-                      DEFAULT_CRITICAL_GC_MEMORY));
-    trigger_gc_memory = static_cast<u64>((device_local_memory - mem_threshold) / 2);
+    const CacheMemoryBudget budget{instance.GetTotalMemoryBudget(), TARGET_GC_THRESHOLD};
+    pressure_gc_memory = budget.Threshold(1_GB, 60, DEFAULT_PRESSURE_GC_MEMORY);
+    critical_gc_memory = budget.Threshold(512_MB, 20, DEFAULT_CRITICAL_GC_MEMORY);
+    trigger_gc_memory = budget.EarlyTrigger();
 }
 
 TextureCache::~TextureCache() {
@@ -400,7 +414,7 @@ bool TextureCache::CommitAliasWriter(AliasState& state) {
 void TextureCache::CopyAlias(ImageId src_id, ImageId dst_id, const Extent3D& extent) {
     Image& src = slot_images[src_id];
     Image& dst = slot_images[dst_id];
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::ImageCopy);
     Image::Barriers barriers;
     src.AppendBarriers(barriers, vk::ImageLayout::eTransferSrcOptimal,
                        vk::AccessFlagBits2::eTransferRead, vk::PipelineStageFlagBits2::eCopy, {});
@@ -591,18 +605,25 @@ bool TextureCache::PromotePendingDownloadAuthority(ImageId image_id, u64 image_u
                 }
             }
             const u32 download_size = static_cast<u32>(GetDownloadSize(image.info));
+            const auto layout = GetReadbackLayout(image.info);
+            // Authority shadows describe a contiguous valid byte range. Pitched multi-row
+            // images use the span-aware conventional download instead of owning their gaps.
+            if (!layout.IsContiguous()) {
+                return false;
+            }
+            const u32 payload_size = static_cast<u32>(layout.PayloadBytes());
             auto& download_buffer = buffer_cache.GetUtilityBuffer(MemoryUsage::Download);
             if (image.image_uid != image_uid || image.content_epoch != resource_version ||
                 !image.SafeToDownload() || download_size != entry.size ||
                 download_size > download_buffer.SizeBytes() ||
-                !buffer_cache.TrackImageReadback(image, entry.size)) {
+                !buffer_cache.TrackImageReadback(image, payload_size)) {
                 return false;
             }
 
             const auto [download, offset] = download_buffer.Map(download_size);
             ASSERT(download != nullptr);
             auto authority_shadow = std::make_shared<GpuAuthorityShadow>(
-                download, image.info.guest_address, offset, download_size, scheduler.CurrentTick());
+                download, image.info.guest_address, offset, payload_size, scheduler.CurrentTick());
             download_buffer.Commit(authority_shadow);
             const vk::BufferImageCopy image_download = {
                 .bufferOffset = offset,
@@ -621,13 +642,25 @@ bool TextureCache::PromotePendingDownloadAuthority(ImageId image_id, u64 image_u
                                 image.info.size.depth},
             };
             // The transition ends rendering only when it records a barrier.
-            scheduler.EndRendering();
+            scheduler.EndRendering(Vulkan::RenderEndReason::ImageReadback);
             image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead,
                           {});
             scheduler.CommandBuffer().copyImageToBuffer(image.GetImage(),
                                                         vk::ImageLayout::eTransferSrcOptimal,
                                                         download_buffer.Handle(), image_download);
             image.flags &= ~ImageFlagBits::GpuModified;
+            if (Gow3Diagnostics::Enabled()) {
+                static u64 promoted_count{};
+                if (++promoted_count <= 16 || promoted_count % 1024 == 0) {
+                    LOG_INFO(Render_Vulkan,
+                             "GoW3 readback: promoted={} addr={:#x} uid={} epoch={} size={}x{} "
+                             "pitch={} format={} reserved={} payload={} tick={}",
+                             promoted_count, image.info.guest_address, image.image_uid,
+                             image.content_epoch, image.info.size.width, image.info.size.height,
+                             image.info.pitch, vk::to_string(image.info.pixel_format),
+                             download_size, payload_size, scheduler.CurrentTick());
+                }
+            }
             *shadow = std::move(authority_shadow);
             pending_downloads.erase(it);
             if (True(image.flags & ImageFlagBits::Aliased)) {
@@ -670,6 +703,7 @@ bool TextureCache::DownloadImageMemory(ImageId image_id, bool validate_identity,
     auto& download_buffer = buffer_cache.GetUtilityBuffer(MemoryUsage::Download);
     const u32 download_size = static_cast<u32>(GetDownloadSize(image.info));
     ASSERT(download_size <= image.info.guest_size);
+    const auto layout = GetReadbackLayout(image.info);
     const auto [download, offset] = download_buffer.Map(download_size);
     download_buffer.Commit();
     const vk::BufferImageCopy image_download = {
@@ -688,7 +722,7 @@ bool TextureCache::DownloadImageMemory(ImageId image_id, bool validate_identity,
         .imageExtent = {image.info.size.width, image.info.size.height, image.info.size.depth},
     };
     // The transition ends rendering only when it records a barrier.
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::ImageReadback);
     const auto cmdbuf = scheduler.CommandBuffer();
     image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead, {});
     cmdbuf.copyImageToBuffer(image.GetImage(), vk::ImageLayout::eTransferSrcOptimal,
@@ -696,7 +730,9 @@ bool TextureCache::DownloadImageMemory(ImageId image_id, bool validate_identity,
     image.flags &= ~ImageFlagBits::GpuModified;
 
     if (track_gpu_source && gpu_resident != nullptr) {
-        *gpu_resident = buffer_cache.TrackImageReadback(image, download_size);
+        *gpu_resident = layout.IsContiguous() &&
+                        buffer_cache.TrackImageReadback(
+                            image, static_cast<u32>(layout.PayloadBytes()));
     }
 
     auto readback_token = validate_identity ? image.readback_token : nullptr;
@@ -707,6 +743,7 @@ bool TextureCache::DownloadImageMemory(ImageId image_id, bool validate_identity,
         .buffer = &download_buffer,
         .buffer_offset = offset,
         .size = download_size,
+        .layout = layout,
     };
     readback_tracker->TrackAsync(pending);
     scheduler.DeferPriorityOperation([image_uid, readback_token = std::move(readback_token),
@@ -948,6 +985,25 @@ std::tuple<ImageId, int, int> TextureCache::ResolveOverlap(const ImageInfo& imag
         if (!HasSameImageMemoryLayout(cache_image.info, image_info)) {
             if (safe_to_delete) {
                 FreeImage(cache_image_id);
+            }
+            return {merged_image_id, -1, -1};
+        }
+
+        // A view of a larger mip still samples that mip's full dimensions. Keep distinct
+        // images for geometry changes whose contents can be synchronized in both directions.
+        if (RequiresSeparateAliasImage(cache_image.info, image_info)) {
+            if (Gow3Diagnostics::Enabled()) {
+                static u64 geometry_splits{};
+                if (++geometry_splits <= 32 || geometry_splits % 1024 == 0) {
+                    LOG_INFO(Render_Vulkan,
+                             "GoW3 effects: geometry split={} addr={:#x} cached_uid={} "
+                             "cached={}x{} requested={}x{} pitch={} formats={}/{}",
+                             geometry_splits, image_info.guest_address, cache_image.image_uid,
+                             cache_image.info.size.width, cache_image.info.size.height,
+                             image_info.size.width, image_info.size.height, image_info.pitch,
+                             vk::to_string(cache_image.info.pixel_format),
+                             vk::to_string(image_info.pixel_format));
+                }
             }
             return {merged_image_id, -1, -1};
         }
@@ -1502,6 +1558,18 @@ bool TextureCache::MaterializeGpuAuthority(const std::shared_ptr<GpuAuthoritySha
     const bool result = Core::Memory::Instance()->TryWriteBacking(
         std::bit_cast<u8*>(required_addr), shadow->data, required_size,
         Core::MemoryWriteOrigin::GpuCompletion);
+    if (Gow3Diagnostics::Enabled()) {
+        static std::atomic<u64> materialized_count{};
+        const u64 count = materialized_count.fetch_add(1, std::memory_order_relaxed) + 1;
+        if (count <= 16 || count % 512 == 0) {
+            u32 first_word{};
+            std::memcpy(&first_word, shadow->data, std::min(required_size, sizeof(first_word)));
+            LOG_INFO(Render_Vulkan,
+                     "GoW3 readback: materialized={} addr={:#x} payload={} first_word={:#x} "
+                     "ready_tick={} success={}",
+                     count, required_addr, required_size, first_word, shadow->ReadyTick(), result);
+        }
+    }
     if (result) {
         const auto complete_readback = [this, required_addr, required_size] {
             buffer_cache.CompleteImageReadback(required_addr, static_cast<u32>(required_size));
@@ -1605,7 +1673,7 @@ ImageView& TextureCache::FindDepthTarget(ImageId image_id, const ImageDesc& desc
 void TextureCache::RefreshImage(Image& image, bool overwritten) {
     // Also covers callers which do not go through UpdateImageImpl.
     ResolveMaybeCpuDirty(image);
-    if (False(image.flags & ImageFlagBits::Dirty) || image.info.num_samples > 1) {
+    if (False(image.flags & ImageFlagBits::Dirty) || image.info.num_samples > 1 || overwritten) {
         return;
     }
 
@@ -1618,6 +1686,7 @@ void TextureCache::RefreshImage(Image& image, bool overwritten) {
     const bool is_gpu_dirty = True(image.flags & ImageFlagBits::GpuDirty);
 
     boost::container::small_vector<vk::BufferImageCopy, 14> image_copies;
+    std::array<u64, 16> upload_hashes{};
     for (u32 m = 0; m < num_mips; m++) {
         const u32 width = std::max(image.info.size.width >> m, 1u);
         const u32 height = std::max(image.info.size.height >> m, 1u);
@@ -1625,14 +1694,35 @@ void TextureCache::RefreshImage(Image& image, bool overwritten) {
             image.info.props.is_volume ? std::max(image.info.size.depth >> m, 1u) : 1u;
         const auto [mip_size, mip_pitch, mip_height, mip_offset] = image.info.mips_layout[m];
 
-        // Protect GPU modified resources from accidental CPU reuploads.
-        if (is_gpu_modified && !is_gpu_dirty) {
-            const u8* addr = std::bit_cast<u8*>(image.info.guest_address);
-            const u64 hash = XXH3_64bits(addr + mip_offset, mip_size);
-            if (image.mip_hashes[m] == hash) {
-                continue;
+        // Establish the CPU reference on the initial upload too. A zero hash is a valid
+        // value, not an implicit baseline. Do not advance it for an alias-only overwrite.
+        const u8* addr = std::bit_cast<u8*>(image.info.guest_address);
+        const u64 hash = XXH3_64bits(addr + mip_offset, mip_size);
+        upload_hashes[m] = hash;
+        const bool preserve = image.upload_baseline.Preserve(m, hash, is_gpu_modified, is_gpu_dirty);
+        if (Gow3Diagnostics::Enabled() && m == 0 && image.info.size.width == 640 &&
+            image.info.size.height == 360 && image.info.num_bits == 32) {
+            static u64 probes{};
+            if (++probes <= 16 || probes % 1024 == 0) {
+                LOG_INFO(Render_Vulkan,
+                         "GoW3 baseline probe={} uid={} addr={:#x} valid={} gpu_modified={} "
+                         "gpu_dirty={} action={}",
+                         probes, image.image_uid, image.info.guest_address,
+                         bool(image.upload_baseline.valid & 1), is_gpu_modified, is_gpu_dirty,
+                         preserve ? "preserve" : "upload");
             }
-            image.mip_hashes[m] = hash;
+        }
+        if (preserve) {
+            if (Gow3Diagnostics::Enabled()) {
+                static u64 preserved{};
+                if (++preserved <= 16 || preserved % 4096 == 0) {
+                    LOG_INFO(Render_Vulkan,
+                             "GoW3 baseline: preserve={} uid={} addr={:#x} mip={} size={}x{}",
+                             preserved, image.image_uid, image.info.guest_address, m,
+                             image.info.size.width, image.info.size.height);
+                }
+            }
+            continue;
         }
 
         const u32 extent_width = mip_pitch ? std::min(mip_pitch, width) : width;
@@ -1656,12 +1746,8 @@ void TextureCache::RefreshImage(Image& image, bool overwritten) {
         image.flags &= ~ImageFlagBits::Dirty;
         return;
     }
-    if (overwritten) {
-        // The alias copy that follows replaces all of the image.
-        return;
-    }
 
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::ImageUpload);
 
     const auto [in_buffer, in_offset] =
         buffer_cache.ObtainBufferForImage(image.info.guest_address, image.info.guest_size);
@@ -1686,6 +1772,10 @@ void TextureCache::RefreshImage(Image& image, bool overwritten) {
     }
 
     image.Upload(image_copies, buffer);
+    for (const auto& copy : image_copies) {
+        const u32 mip = copy.imageSubresource.mipLevel;
+        image.upload_baseline.Record(mip, upload_hashes[mip]);
+    }
 }
 
 vk::Sampler TextureCache::GetSampler(const AmdGpu::Sampler& sampler,
@@ -1745,8 +1835,12 @@ void TextureCache::RegisterImage(ImageId image_id) {
         }
         ++aliases;
         candidate.flags |= ImageFlagBits::Aliased;
-        if (!IsLiveImage(state->backing, state->backing_uid) ||
-            slot_images[state->backing].alias_generation < candidate.alias_generation) {
+        // A newer candidate can be the pending partial writer. Keep its backing until
+        // CommitAliasWriter merges the written region; promoting the writer here would
+        // make writer == backing and silently discard that merge and the untouched region.
+        if (!state->writer &&
+            (!IsLiveImage(state->backing, state->backing_uid) ||
+             slot_images[state->backing].alias_generation < candidate.alias_generation)) {
             SetAliasIdentity(state->backing, state->backing_uid, candidate_id, candidate.image_uid);
         }
     });

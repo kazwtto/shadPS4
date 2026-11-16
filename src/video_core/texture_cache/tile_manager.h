@@ -4,6 +4,7 @@
 #pragma once
 
 #include <limits>
+#include <memory>
 
 #include "common/types.h"
 #include "video_core/amdgpu/tiling.h"
@@ -19,7 +20,6 @@ class TileManager {
     static constexpr size_t NUM_BPPS = 5;
 
 public:
-    using ScratchBuffer = std::pair<vk::Buffer, VmaAllocation>;
     using Result = std::pair<vk::Buffer, u32>;
 
     explicit TileManager(const Vulkan::Instance& instance, Vulkan::Scheduler& scheduler,
@@ -39,7 +39,8 @@ public:
 
 private:
     vk::Pipeline GetTilingPipeline(const ImageInfo& info, bool is_tiler, bool from_image = false);
-    ScratchBuffer GetScratchBuffer(u32 size);
+    /// Reserves scratch until the current GPU tick completes, then returns it to a bounded cache.
+    vk::Buffer GetScratchBuffer(u32 size);
     /// Format of a uint view the tiler can read the image through, or eUndefined when the
     /// image has to be copied to a buffer first.
     [[nodiscard]] static vk::Format TilingViewFormat(const Image& image) noexcept;
@@ -48,6 +49,8 @@ private:
     const Vulkan::Instance& instance;
     Vulkan::Scheduler& scheduler;
     StreamBuffer& stream_buffer;
+    struct ScratchBufferPool;
+    std::shared_ptr<ScratchBufferPool> scratch_pool;
     vk::UniqueDescriptorSetLayout desc_layout;
     vk::UniquePipelineLayout pl_layout;
     std::array<vk::UniquePipeline, AmdGpu::NUM_TILE_MODES * NUM_BPPS> detilers{};

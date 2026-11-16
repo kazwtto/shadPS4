@@ -195,9 +195,10 @@ struct AddressSpace::Impl {
         BackingSize += EmulatorSettings.GetExtraDmemInMBytes() * 1_MB +
                        EmulatorSettings.GetExtraFmemInMBytes() * 1_MB;
 
-        // Allocate backing file that represents the total physical memory.
+        // Reserve the full physical address range, but charge commit only when guest
+        // mappings use it. SEC_COMMIT charges the entire devkit/extra memory at boot.
         backing_handle = CreateFileMapping2(INVALID_HANDLE_VALUE, nullptr, FILE_MAP_ALL_ACCESS,
-                                            PAGE_EXECUTE_READWRITE, SEC_COMMIT, BackingSize,
+                                            PAGE_EXECUTE_READWRITE, SEC_RESERVE, BackingSize,
                                             nullptr, nullptr, 0);
 
         ASSERT_MSG(backing_handle, "{}", Common::GetLastErrorMsg());
@@ -207,11 +208,13 @@ struct AddressSpace::Impl {
                                                       PAGE_NOACCESS, nullptr, 0));
         ASSERT_MSG(backing_base, "{}", Common::GetLastErrorMsg());
 
-        // Map backing placeholder. This will commit the pages
+        // SEC_RESERVE leaves pages reserved in all aliases until CommitBacking.
         void* const ret =
             MapViewOfFile3(backing_handle, process, backing_base, 0, BackingSize,
                            MEM_REPLACE_PLACEHOLDER, PAGE_EXECUTE_READWRITE, nullptr, 0);
         ASSERT_MSG(ret == backing_base, "{}", Common::GetLastErrorMsg());
+        LOG_INFO(Core, "Physical backing reserved: {} MiB; commit on guest mapping enabled",
+                 BackingSize / 1_MB);
     }
 
     ~Impl() {
@@ -233,6 +236,18 @@ struct AddressSpace::Impl {
         }
     }
 
+    void CommitBacking(PAddr offset, u64 size) {
+        ASSERT_MSG(offset <= BackingSize && size <= BackingSize - offset,
+                   "Physical backing range out of bounds: {:#x}+{:#x}", offset, size);
+        // Committing the canonical view commits the shared section pages, not a
+        // private allocation per alias. Never decommit on unmap: another alias or
+        // the GPU may still own the contents. Recommitting committed pages is safe.
+        auto* address = backing_base + offset;
+        void* committed = VirtualAlloc(address, size, MEM_COMMIT, PAGE_EXECUTE_READWRITE);
+        ASSERT_MSG(committed, "Physical backing commit failed (Win32 {}): offset={:#x}, size={} MiB",
+                   GetLastError(), offset, size / 1_MB);
+    }
+
     void* MapRegion(MemoryRegion* region) {
         VAddr virtual_addr = region->base;
         PAddr phys_addr = region->phys_base;
@@ -242,6 +257,9 @@ struct AddressSpace::Impl {
 
         void* ptr = nullptr;
         if (phys_addr != -1) {
+            if (fd == -1) {
+                CommitBacking(phys_addr, size);
+            }
             HANDLE backing = fd != -1 ? reinterpret_cast<HANDLE>(fd) : backing_handle;
             if (fd != -1 && prot == PAGE_READONLY) {
                 // Allocate the memory for the mapping

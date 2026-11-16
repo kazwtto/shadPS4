@@ -5,6 +5,7 @@
 #include <array>
 #include <bit>
 #include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <limits>
 
@@ -31,6 +32,23 @@ namespace Core {
 namespace {
 
 constexpr size_t NonTemporalCopyThreshold = 8 * 1024;
+
+// E10: the 8 KiB NT path was slower than memcpy for small copies on the 5825U
+// (E04). Leave zero-fill policy unchanged, and preserve the existing SFENCE.
+size_t CopyNonTemporalThreshold() noexcept {
+    static const size_t threshold = [] {
+        constexpr size_t fallback = 128 * 1024;
+        const char* env = std::getenv("SHADPS4_COPY_NT_THRESHOLD_KIB");
+        if (!env || !*env) {
+            return fallback;
+        }
+        char* end{};
+        const auto value = std::strtoull(env, &end, 10);
+        return end != env && *end == '\0' && value >= 8 && value <= 4096
+                   ? static_cast<size_t>(value) * 1024 : fallback;
+    }();
+    return threshold;
+}
 constexpr size_t DenseCopySpanWays = 4;
 
 struct DenseCopySpan {
@@ -71,7 +89,7 @@ thread_local DenseCopyCache dense_copy_cache{};
 [[nodiscard]] bool CopyMappedBytes(const u8* source, u8* destination, size_t size,
                                    bool allow_non_temporal) noexcept {
 #if defined(__AVX2__) && (defined(__x86_64__) || defined(_M_X64))
-    if (allow_non_temporal && size >= NonTemporalCopyThreshold && size % 64 == 0 &&
+    if (allow_non_temporal && size >= CopyNonTemporalThreshold() && size % 64 == 0 &&
         (reinterpret_cast<uintptr_t>(destination) & 63U) == 0) {
         size_t offset = 0;
         const size_t vector_size = size & ~size_t{31};

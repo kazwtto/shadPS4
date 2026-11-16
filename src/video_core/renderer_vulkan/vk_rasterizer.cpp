@@ -3,20 +3,27 @@
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <bit>
 #include <cstdlib>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <limits>
 #include <optional>
+#include <set>
 #include <span>
 #include <thread>
 #include <type_traits>
 #include <utility>
 
 #include <immintrin.h>
+#include <hwinfo/hwinfo.h>
+#include <nlohmann/json.hpp>
 
 #include "common/assert.h"
 #include "common/debug.h"
+#include "common/elf_info.h"
 #include "common/hash.h"
 #include "common/logging/log.h"
 #include "common/signal_context.h"
@@ -28,8 +35,12 @@
 #include "video_core/amdgpu/liverpool.h"
 #include "video_core/flush_epoch.h"
 #include "video_core/gpu_authority_tracker.h"
+#include "video_core/gow3_diagnostics.h"
 #include "video_core/guest_copy_engine.h"
 #include "video_core/renderer_vulkan/liverpool_to_vk.h"
+#include "video_core/renderer_vulkan/effect_probe.h"
+#include "video_core/renderer_vulkan/metadata_clear.h"
+#include "video_core/renderer_vulkan/texture_descriptor_layout.h"
 #include "video_core/renderer_vulkan/vk_depth_stencil_state.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_rasterizer.h"
@@ -424,6 +435,23 @@ namespace {
     return 2;
 }
 
+[[nodiscard]] u32 GuestCopyIdleSpinUs(const Instance& instance) {
+    // The 5825U/Vega GoW3 capture shows both copy workers spending most of their sampled
+    // execution in the 40 us idle polling loop. Park sooner on this measured hardware,
+    // keeping the same workers, jobs and wake-up protocol. Other hosts retain 40 us.
+    if (!instance.IsIntegrated() || instance.GetDriverID() != vk::DriverId::eAmdProprietary ||
+        Common::ElfInfo::Instance().GameSerial() != "CUSA01623") {
+        return 40;
+    }
+    const auto cpus = hwinfo::getAllCPUs();
+    if (std::ranges::any_of(cpus, [](const auto& cpu) {
+            return cpu.modelName().find("5825U") != std::string::npos;
+        })) {
+        return 5;
+    }
+    return 40;
+}
+
 [[nodiscard]] u64 HashTextureLookup(const AmdGpu::Image& sharp, u64 resource_key,
                                     u32 mip_index) noexcept {
     std::array<u64, sizeof(AmdGpu::Image) / sizeof(u64)> words;
@@ -480,7 +508,7 @@ Rasterizer::Rasterizer(const Instance& instance_, Scheduler& scheduler_,
         } else {
             LOG_INFO(Render_Vulkan, "GPU shadow serving disabled by SHADPS4_GPU_SHADOW_SERVE");
         }
-        copy_engine.Start(GuestCopyWorkerCount());
+        copy_engine.Start(GuestCopyWorkerCount(), GuestCopyIdleSpinUs(instance));
     }
     memory->SetRasterizer(this);
     VideoCore::GpuAuthorityTracker::Instance().SetRasterizer(this);
@@ -494,7 +522,7 @@ Rasterizer::~Rasterizer() {
 }
 
 void Rasterizer::CpSync() {
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::CpSync);
     auto cmdbuf = scheduler.CommandBuffer();
 
     const vk::MemoryBarrier ib_barrier{
@@ -652,7 +680,7 @@ void Rasterizer::EmitPendingGlobalBarrier() {
     pending_flush_src_access = vk::AccessFlagBits2::eNone;
     pending_flush_dst_stages = vk::PipelineStageFlagBits2::eNone;
     pending_flush_dst_access = vk::AccessFlagBits2::eNone;
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::GlobalBarrier);
     scheduler.CommandBuffer().pipelineBarrier2(vk::DependencyInfo{
         .memoryBarrierCount = 1,
         .pMemoryBarriers = &barrier,
@@ -660,7 +688,7 @@ void Rasterizer::EmitPendingGlobalBarrier() {
 }
 
 void Rasterizer::FullGpuBarrier() {
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::GlobalBarrier);
     const vk::MemoryBarrier2 barrier{
         .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
         .srcAccessMask = vk::AccessFlagBits2::eMemoryWrite | vk::AccessFlagBits2::eMemoryRead |
@@ -915,9 +943,25 @@ void Rasterizer::Draw(bool is_indexed, u32 index_offset) {
     const auto& regs = liverpool->regs;
     const GraphicsPipeline* pipeline = pipeline_cache.GetGraphicsPipeline();
     if (!pipeline) {
+        if (VideoCore::Gow3Diagnostics::Enabled()) {
+            static u64 skipped_draws{};
+            if (++skipped_draws <= 8 || skipped_draws % 4096 == 0) {
+                LOG_INFO(Render_Vulkan, "GoW3 diagnostic: missing graphics pipeline draw={}",
+                         skipped_draws);
+            }
+        }
         return;
     }
 
+    effect_probe_active = false;
+    static const bool probe_enabled =
+        std::getenv("SHADPS4_GOW3_EFFECT_PROBE_DIR") != nullptr;
+    if (probe_enabled) {
+        const auto* fs = pipeline->GetStages()[u32(Shader::LogicalStage::Fragment)];
+        if (fs && fs->pgm_hash == EffectProbe::ShaderHash) {
+            effect_probe_active = EffectProbe::Sample(++effect_probe_occurrence);
+        }
+    }
     PrepareRenderState(pipeline);
     if (!BindResources(pipeline)) {
         return;
@@ -957,6 +1001,12 @@ void Rasterizer::Draw(bool is_indexed, u32 index_offset) {
     DebugState.IncDrawCall();
     MarkImageWrites(false);
 
+    if (effect_probe_active && cb_descs[0].first) {
+        const auto* fs = pipeline->GetStages()[u32(Shader::LogicalStage::Fragment)];
+        ProbeEffectImage(cb_descs[0].first, cb_descs[0].second.view_info, "output", 0, *fs);
+    }
+    effect_probe_active = false;
+
     ResetBindings();
 }
 
@@ -964,6 +1014,14 @@ bool Rasterizer::BindSquarePass(const GraphicsPipeline& pipeline) {
     const vk::Pipeline square_pipeline = pipeline.SquarePassHandle();
     if (!square_pipeline) [[likely]] {
         return false;
+    }
+    if (VideoCore::Gow3Diagnostics::Enabled()) {
+        static u64 square_draws{};
+        if (++square_draws <= 16 || square_draws % 4096 == 0) {
+            const auto* fragment = pipeline.GetStages()[u32(Shader::LogicalStage::Fragment)];
+            LOG_INFO(Render_Vulkan, "GoW3 diagnostic: square draw={} fragment={:#x}",
+                     square_draws, fragment ? fragment->pgm_hash : 0);
+        }
     }
     // GNM scales the MIN/MAX operands, MIN(s * s, d * d) = MIN(s, d)^2, so a second draw with the
     // same coverage squares what the first one blended. A depth or stencil write of the first
@@ -1091,7 +1149,7 @@ void Rasterizer::DispatchDirect() {
         return;
     }
 
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::Compute);
     BindPipelineResources(pipeline);
 
     const auto cmdbuf = scheduler.CommandBuffer();
@@ -1129,7 +1187,7 @@ void Rasterizer::DispatchIndirect(VAddr address, u32 offset, u32 size) {
         buffer_barriers.emplace_back(*barrier);
     }
 
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::Compute);
     BindPipelineResources(pipeline);
 
     const auto cmdbuf = scheduler.CommandBuffer();
@@ -1237,7 +1295,7 @@ bool Rasterizer::BindResources(const Pipeline* pipeline) {
                 .dstAccessMask =
                     vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
             };
-            scheduler.EndRendering();
+            scheduler.EndRendering(Vulkan::RenderEndReason::GlobalBarrier);
             scheduler.CommandBuffer().pipelineBarrier2(vk::DependencyInfo{
                 .memoryBarrierCount = 1,
                 .pMemoryBarriers = &barrier,
@@ -1393,6 +1451,9 @@ void Rasterizer::BindPipelineResources(const Pipeline* pipeline) {
 }
 
 SHAD_NOINLINE bool Rasterizer::IsComputeMetaClear(const Pipeline* pipeline) {
+    if (VideoCore::Gow3Diagnostics::DisableMetaClear()) {
+        return false;
+    }
     if (!pipeline->IsCompute()) {
         return false;
     }
@@ -1403,35 +1464,45 @@ SHAD_NOINLINE bool Rasterizer::IsComputeMetaClear(const Pipeline* pipeline) {
     // will need its full emulation anyways.
     const auto& info = pipeline->GetStage(Shader::LogicalStage::Compute);
 
-    // Assume if a shader reads metadata, it is a copy shader.
-    for (u32 index = 0; index < info.buffers.size(); ++index) {
-        const auto& desc = info.buffers[index];
-        const VAddr address = GetResolvedBuffer(info, index).base_address;
-        if (!desc.IsSpecial() && !desc.is_written && texture_cache.IsMeta(address)) {
-            return false;
-        }
-    }
-
     // Metadata surfaces are tiled and thus need address calculation to be written properly.
     // If a shader wants to encode HTILE, for example, from a depth image it will have to compute
     // proper tile address from dispatch invocation id. This address calculation contains an xor
     // operation so use it as a heuristic for metadata writes that are probably not clears.
-    if (!info.has_bitwise_xor) {
-        // Assume if a shader writes metadata without address calculation, it is a clear shader.
-        for (u32 index = 0; index < info.buffers.size(); ++index) {
-            const auto& desc = info.buffers[index];
-            const VAddr address = GetResolvedBuffer(info, index).base_address;
-            if (!desc.IsSpecial() && desc.is_written && texture_cache.ClearMeta(address)) {
-                // Assume all slices were updates
-                LOG_TRACE(Render_Vulkan, "Metadata update skipped");
-                return true;
+    const auto is_metadata = [&](size_t index) {
+        return texture_cache.IsMeta(GetResolvedBuffer(info, index).base_address).has_value();
+    };
+    if (!CanEmulateMetadataClear(info.buffers, !info.images.empty() || info.uses_dma,
+                                info.has_bitwise_xor,
+                                is_metadata)) {
+        return false;
+    }
+    // The dispatch is replaced only after checking all its outputs. Update every written
+    // metadata surface, not just the first one (e.g. a dispatch clearing two attachments).
+    for (u32 index = 0; index < info.buffers.size(); ++index) {
+        const auto& desc = info.buffers[index];
+        if (desc.IsSpecial() || !desc.is_written) {
+            continue;
+        }
+        const VAddr address = GetResolvedBuffer(info, index).base_address;
+        const bool cleared = texture_cache.ClearMeta(address);
+        ASSERT(cleared);
+        if (VideoCore::Gow3Diagnostics::Enabled()) {
+            static u64 meta_clears{};
+            if (++meta_clears <= 16 || meta_clears % 4096 == 0) {
+                LOG_INFO(Render_Vulkan,
+                         "GoW3 diagnostic: meta clear={} shader={:#x} address={:#x}",
+                         meta_clears, info.pgm_hash, address);
             }
         }
     }
-    return false;
+    LOG_TRACE(Render_Vulkan, "Metadata update skipped");
+    return true;
 }
 
 SHAD_NOINLINE bool Rasterizer::IsComputeImageCopy(const Pipeline* pipeline) {
+    if (VideoCore::Gow3Diagnostics::DisableImageCopy()) {
+        return false;
+    }
     if (!pipeline->IsCompute()) {
         return false;
     }
@@ -1480,6 +1551,15 @@ SHAD_NOINLINE bool Rasterizer::IsComputeImageCopy(const Pipeline* pipeline) {
     // Perform image copy
     VideoCore::Image& src_image = desc0.is_written ? image1 : image0;
     VideoCore::Image& dst_image = desc0.is_written ? image0 : image1;
+    if (VideoCore::Gow3Diagnostics::Enabled()) {
+        static u64 image_copies{};
+        if (++image_copies <= 16 || image_copies % 4096 == 0) {
+            LOG_INFO(Render_Vulkan,
+                     "GoW3 diagnostic: image copy={} shader={:#x} src_uid={} dst_uid={} bytes={}",
+                     image_copies, info.pgm_hash, src_image.image_uid, dst_image.image_uid,
+                     dst_image.info.guest_size);
+        }
+    }
     if (instance.IsMaintenance8Supported() ||
         src_image.info.props.is_depth == dst_image.info.props.is_depth) {
         dst_image.CopyImage(src_image);
@@ -1499,6 +1579,9 @@ SHAD_NOINLINE bool Rasterizer::IsComputeImageCopy(const Pipeline* pipeline) {
 }
 
 SHAD_NOINLINE bool Rasterizer::IsComputeImageClear(const Pipeline* pipeline) {
+    if (VideoCore::Gow3Diagnostics::DisableImageClear()) {
+        return false;
+    }
     if (!pipeline->IsCompute()) {
         return false;
     }
@@ -1541,6 +1624,16 @@ SHAD_NOINLINE bool Rasterizer::IsComputeImageClear(const Pipeline* pipeline) {
 
     // Perform image clear
     const float* values = reinterpret_cast<float*>(buf0.base_address);
+    if (VideoCore::Gow3Diagnostics::Enabled()) {
+        static u64 image_clears{};
+        if (++image_clears <= 16 || image_clears % 4096 == 0) {
+            LOG_INFO(Render_Vulkan,
+                     "GoW3 diagnostic: image clear={} shader={:#x} uid={} bytes={} "
+                     "value={},{},{},{}",
+                     image_clears, info.pgm_hash, image1.image_uid, image1.info.guest_size,
+                     values[0], values[1], values[2], values[3]);
+        }
+    }
     const vk::ClearValue clear = {
         .color = {.float32 = std::array<float, 4>{values[0], values[1], values[2], values[3]}},
     };
@@ -1864,6 +1957,26 @@ SHAD_NO_INLINE void Rasterizer::BindTextureMiss(const Shader::Info& stage, const
 
     const auto& image_binding = image_bindings.back();
     const auto& image = texture_cache.GetImage(image_binding.image_id);
+    if (VideoCore::Gow3Diagnostics::Enabled()) {
+        ImageDesc requested{tsharp, image_desc};
+        SelectImageMip(requested, image_desc, mip_index, num_bindings);
+        if (requested.info.size != image.info.size) {
+            static std::set<std::pair<u64, u64>> reported_geometry;
+            if (reported_geometry.size() < 128 &&
+                reported_geometry.emplace(image.image_uid, stage.pgm_hash).second) {
+                LOG_INFO(Render_Vulkan,
+                         "GoW3 effects: view geometry shader={:#x} slot={} addr={:#x} uid={} "
+                         "requested={}x{}x{} resolved={}x{}x{} pitch={}/{} layers={}/{} mip={} "
+                         "format={}/{}",
+                         stage.pgm_hash, image_index, requested.info.guest_address, image.image_uid,
+                         requested.info.size.width, requested.info.size.height, requested.info.size.depth,
+                         image.info.size.width, image.info.size.height, image.info.size.depth,
+                         requested.info.pitch, image.info.pitch, requested.info.resources.layers,
+                         image.info.resources.layers, image_binding.view_info.range.base.level,
+                         vk::to_string(requested.info.pixel_format), vk::to_string(image.info.pixel_format));
+            }
+        }
+    }
     const u64 topology_epoch = texture_cache.TopologyEpoch();
     cached.sharp = tsharp;
     cached.resource_key = resource_key;
@@ -1927,9 +2040,128 @@ SHAD_NO_INLINE void Rasterizer::RefreshCachedView(CachedImageView& cached_view,
     };
 }
 
+void Rasterizer::ProbeEffectImage(VideoCore::ImageId image_id,
+                                  const VideoCore::ImageViewInfo& view, const char* role,
+                                  u32 slot, const Shader::Info& stage) {
+    auto& image = texture_cache.GetImage(image_id);
+    const auto format = image.info.pixel_format;
+    const bool bgra = format == vk::Format::eB8G8R8A8Unorm ||
+                      format == vk::Format::eB8G8R8A8Srgb;
+    const bool rgba = format == vk::Format::eR8G8B8A8Unorm ||
+                      format == vk::Format::eR8G8B8A8Srgb;
+    const auto mip = view.range.base.level;
+    if ((!bgra && !rgba) || image.info.num_samples != 1 ||
+        image.backing->num_samples != 1 || image.info.props.is_volume ||
+        view.range.extent.layers != 1 || mip >= image.info.resources.levels) {
+        LOG_INFO(Render_Vulkan, "GoW3 probe: unsupported role={} slot={} format={} samples={}",
+                 role, slot, vk::to_string(format), image.info.num_samples);
+        return;
+    }
+    const u32 width = std::max(image.info.size.width >> mip, 1u);
+    const u32 height = std::max(image.info.size.height >> mip, 1u);
+    const u64 bytes = u64{width} * height * 4;
+    if (bytes > EffectProbe::MaxImageBytes) {
+        return;
+    }
+    static std::atomic<unsigned> pending{};
+    if (pending.fetch_add(1) >= EffectProbe::MaxPending) {
+        pending.fetch_sub(1);
+        LOG_INFO(Render_Vulkan, "GoW3 probe: pending limit; skipped role={} slot={}", role, slot);
+        return;
+    }
+    try {
+        auto download = std::make_shared<VideoCore::Buffer>(
+            instance, scheduler, VideoCore::MemoryUsage::Download, 0,
+            vk::BufferUsageFlagBits::eTransferDst, bytes);
+        const auto dir = std::filesystem::path{std::getenv("SHADPS4_GOW3_EFFECT_PROBE_DIR")};
+        std::filesystem::create_directories(dir);
+        const auto basename = fmt::format("{:04}_{}_{}", effect_probe_occurrence, role, slot);
+        nlohmann::json metadata{
+            {"shader", fmt::format("{:#x}", stage.pgm_hash)},
+            {"occurrence", effect_probe_occurrence}, {"role", role}, {"slot", slot},
+            {"width", width}, {"height", height}, {"raw_bgra", bgra},
+            {"guest_address", fmt::format("{:#x}", image.info.guest_address)},
+            {"image_uid", image.image_uid}, {"content_epoch", image.content_epoch},
+            {"storage_format", vk::to_string(format)},
+            {"view_format", vk::to_string(view.format)}, {"mip", mip},
+            {"layer", view.range.base.layer},
+            {"mapping", {u32(view.mapping.r), u32(view.mapping.g), u32(view.mapping.b),
+                         u32(view.mapping.a)}},
+            {"viewport", {liverpool->regs.viewports[0].xscale,
+                          liverpool->regs.viewports[0].xoffset,
+                          liverpool->regs.viewports[0].yscale,
+                          liverpool->regs.viewports[0].yoffset}},
+            {"user_data_words", std::vector<u32>(
+                 stage.user_data.begin(), stage.user_data.begin() +
+                 std::min<size_t>(stage.user_data.size(), 256))},
+            {"flattened_words", std::vector<u32>(
+                 stage.flattened_ud_buf.begin(), stage.flattened_ud_buf.begin() +
+                 std::min<size_t>(stage.flattened_ud_buf.size(), 256))},
+        };
+        for (u32 index = 0; index < stage.resolved_samplers.size(); ++index) {
+            const auto sharp = GetResolvedSampler(stage, index);
+            std::array<u32, sizeof(sharp) / sizeof(u32)> words;
+            std::memcpy(words.data(), &sharp, sizeof(sharp));
+            metadata["sampler_words"].push_back(words);
+        }
+        if (slot < stage.resolved_images.size()) {
+            const auto sharp = GetResolvedImage(stage, slot);
+            std::array<u32, sizeof(sharp) / sizeof(u32)> words;
+            std::memcpy(words.data(), &sharp, sizeof(sharp));
+            metadata["image_words"] = words;
+        }
+        const vk::BufferImageCopy copy{
+            .imageSubresource = {vk::ImageAspectFlagBits::eColor, mip,
+                                 view.range.base.layer, 1},
+            .imageExtent = {width, height, 1},
+        };
+        image.Download(std::span{&copy, 1}, download->Handle(), 0, bytes, false);
+        const vk::BufferMemoryBarrier2 host_barrier{
+            .srcStageMask = vk::PipelineStageFlagBits2::eCopy,
+            .srcAccessMask = vk::AccessFlagBits2::eTransferWrite,
+            .dstStageMask = vk::PipelineStageFlagBits2::eHost,
+            .dstAccessMask = vk::AccessFlagBits2::eHostRead,
+            .buffer = download->Handle(), .offset = 0, .size = bytes,
+        };
+        scheduler.CommandBuffer().pipelineBarrier2(vk::DependencyInfo{
+            .bufferMemoryBarrierCount = 1, .pBufferMemoryBarriers = &host_barrier});
+        // The callback owns only the bounded download buffer and metadata, never a live Image&.
+        scheduler.DeferOperation([download = std::move(download), metadata = std::move(metadata),
+                                  dir, basename, bytes, bgra]() mutable {
+            try {
+                download->Invalidate(0, bytes);
+                const auto data = download->mapped_data.first(bytes);
+                const auto summary = EffectProbe::Summarize(data, bgra);
+                metadata["raw_rg_summary"] = {
+                    {"pixels", summary.pixels}, {"near_neutral", summary.near_neutral},
+                    {"zero_rg", summary.zero_rg}, {"minimum", summary.minimum},
+                    {"maximum", summary.maximum}};
+                metadata["sha_source"] = "GPU image before/after draw; no guest RAM write";
+                std::ofstream raw{dir / (basename + ".rgba"), std::ios::binary};
+                raw.write(reinterpret_cast<const char*>(data.data()), data.size());
+                std::ofstream json{dir / (basename + ".json")};
+                json << metadata.dump(2);
+                if (!raw || !json) {
+                    LOG_ERROR(Render_Vulkan, "GoW3 probe: write failed {}", basename);
+                } else {
+                    LOG_INFO(Render_Vulkan, "GoW3 probe: saved {} bytes={} neutral={}/{}",
+                             basename, bytes, summary.near_neutral, summary.pixels);
+                }
+            } catch (const std::exception& error) {
+                LOG_ERROR(Render_Vulkan, "GoW3 probe: readback failed {}", error.what());
+            }
+            pending.fetch_sub(1);
+        });
+    } catch (const std::exception& error) {
+        pending.fetch_sub(1);
+        LOG_ERROR(Render_Vulkan, "GoW3 probe: scheduling failed {}", error.what());
+    }
+}
+
 SHAD_NOINLINE void Rasterizer::BindTextures(const Shader::Info& stage,
                                           Shader::Backend::Bindings& binding) {
     image_bindings.clear();
+    const size_t first_stage_descriptor = image_descriptor_bindings.size();
     const u32 first_image_idx = image_infos.size();
     const u32 stage_index = static_cast<u32>(stage.l_stage);
     if (stage_index >= MaxShaderStages) [[unlikely]] {
@@ -2056,6 +2288,10 @@ SHAD_NOINLINE void Rasterizer::BindTextures(const Shader::Info& stage,
             texture_cache.PrepareTexture(
                 image_id, is_storage ? VideoCore::TextureCache::BindingType::Storage
                                      : VideoCore::TextureCache::BindingType::Texture);
+            if (effect_probe_active && stage.pgm_hash == EffectProbe::ShaderHash &&
+                !is_storage && image_binding.source_index < 2 && image_binding.mip_index == 0) {
+                ProbeEffectImage(image_id, view_info, "input", image_binding.source_index, stage);
+            }
             const u64 topology_epoch = texture_cache.TopologyEpoch();
             if (!IsCachedViewCurrent(cached_view, image_id, image, topology_epoch, view_info))
                 [[unlikely]] {
@@ -2088,6 +2324,7 @@ SHAD_NOINLINE void Rasterizer::BindTextures(const Shader::Info& stage,
                 access |= vk::AccessFlagBits2::eShaderWrite;
             }
             const auto it = std::ranges::find(transitions, image_id, &ImageTransition::image_id);
+            const u32 transition_index = static_cast<u32>(it - transitions.begin());
             if (it == transitions.end()) {
                 transitions.push_back({image_id, range, layout, access, stages});
             } else {
@@ -2104,7 +2341,7 @@ SHAD_NOINLINE void Rasterizer::BindTextures(const Shader::Info& stage,
             image.usage.texture |= !is_storage;
 
             image_descriptor_bindings.push_back(
-                {image_id, static_cast<u32>(image_infos.size())});
+                {image_id, static_cast<u32>(image_infos.size()), transition_index});
             image_infos.emplace_back(VK_NULL_HANDLE, image_view_handle, layout);
         }
     }
@@ -2117,18 +2354,14 @@ SHAD_NOINLINE void Rasterizer::BindTextures(const Shader::Info& stage,
                             transition.stages, transition.range);
     }
     if (!image_barriers.empty()) {
-        scheduler.EndRendering();
+        scheduler.EndRendering(Vulkan::RenderEndReason::TextureVisibility);
         scheduler.CommandBuffer().pipelineBarrier2(vk::DependencyInfo{
             .imageMemoryBarrierCount = static_cast<u32>(image_barriers.size()),
             .pImageMemoryBarriers = image_barriers.data(),
         });
     }
-    for (const auto& descriptor : image_descriptor_bindings) {
-        const auto it = std::ranges::find(transitions, descriptor.image_id, &ImageTransition::image_id);
-        if (it != transitions.end()) {
-            image_infos[descriptor.descriptor_index].imageLayout = it->layout;
-        }
-    }
+    UpdateTextureDescriptorLayouts(image_descriptor_bindings, first_stage_descriptor, transitions,
+                                   image_infos);
 
     u32 image_info_idx = first_image_idx;
     u32 image_binding_idx = 0;
@@ -2222,6 +2455,27 @@ RenderState Rasterizer::BeginRendering(const GraphicsPipeline* pipeline) {
         const bool is_clear = texture_cache.TakeMetaCleared(col_buf.CmaskAddress(), slice);
 
         if (image->binding.is_bound) {
+            if (VideoCore::Gow3Diagnostics::Enabled()) {
+                static std::set<std::pair<u64, u64>> reported_feedback;
+                if (reported_feedback.size() < 128 &&
+                    reported_feedback.emplace(GpuHandle(pipeline->Handle()), image->image_uid).second) {
+                    const auto* fs = pipeline->GetStages()[u32(Shader::LogicalStage::Fragment)];
+                    const auto& blend = key.blend_controls[cb];
+                    LOG_INFO(Render_Vulkan,
+                             "GoW3 effects: feedback fragment={:#x} addr={:#x} uid={} size={}x{}x{} "
+                             "layers={} mip={} format={} mode={} indices={} instances={} "
+                             "blend={} rgb={}/{}/{} alpha={}/{}/{} separate_alpha={} export_mask={:#x}",
+                             fs ? fs->pgm_hash : 0, image->info.guest_address, image->image_uid,
+                             image->info.size.width, image->info.size.height, image->info.size.depth,
+                             image->info.resources.layers, mip, vk::to_string(image->info.pixel_format),
+                             instance.IsAttachmentFeedbackLoopDynamicStateSupported() ? "dynamic" :
+                             instance.IsAttachmentFeedbackLoopLayoutSupported() ? "static" : "general",
+                             regs.num_indices, regs.num_instances.NumInstances(), bool(blend.enable),
+                             u32(blend.color_src_factor), u32(blend.color_func), u32(blend.color_dst_factor),
+                             u32(blend.alpha_src_factor), u32(blend.alpha_func), u32(blend.alpha_dst_factor),
+                             bool(blend.separate_alpha_blend), key.cb_shader_mask.GetMask(cb));
+                }
+            }
             if (image->binding.force_general) [[unlikely]] {
                 ValidateFeedbackLoopBinding(image->binding.force_general);
             }
@@ -2289,8 +2543,30 @@ RenderState Rasterizer::BeginRendering(const GraphicsPipeline* pipeline) {
         // only needed while the image is also sampled, and texture binding moves it there first.
         // Leaving the writable layout would break the rendering scope now and again at the
         // next draw that writes.
-        const bool keep_write_layout = image.backing->subresource_states.empty() &&
-                                       image.backing->state.layout == write_layout;
+        static const bool reuse_attachment_layout = [] {
+            const char* value = std::getenv("SHADPS4_ATTACHMENT_LAYOUT_REUSE");
+            return value && value[0] == '1' && value[1] == '\0';
+        }();
+        const bool uniform_write_layout = image.backing->subresource_states.empty() &&
+                                          image.backing->state.layout == write_layout;
+        const bool keep_write_layout =
+            uniform_write_layout ||
+            (reuse_attachment_layout && image.IsRangeInLayout(write_layout, desc.view_info.range));
+        // A split backing may still have a writable layout for this view. Keeping it avoids
+        // write/read-only/write oscillation without changing any subresource's layout or
+        // bypassing Transit and its access/stage dependencies. Sampled views are transitioned
+        // by BindTextures first, and therefore cannot pass this layout check when overlapping.
+        static const bool report_layout_reuse =
+            VideoCore::Gow3Diagnostics::EnvironmentEnabled("SHADPS4_ATTACHMENT_LAYOUT_STATS");
+        if (report_layout_reuse && keep_write_layout && !uniform_write_layout &&
+            !desc.view_info.is_storage) [[unlikely]] {
+            static std::atomic<u64> reuse_count{};
+            const u64 count = reuse_count.fetch_add(1, std::memory_order_relaxed) + 1;
+            if (count == 1 || count % 4096 == 0) {
+                LOG_INFO(Render_Vulkan, "Attachment layout reuse: kept writable depth view={}",
+                         count);
+            }
+        }
         const auto new_layout = desc.view_info.is_storage || keep_write_layout ? write_layout
                                 : stencil_write
                                     ? vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimal

@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright 2024 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <cstdlib>
+
 #include "common/alignment.h"
 #include "common/div_ceil.h"
 #include "common/logging/log.h"
@@ -8,6 +10,7 @@
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
+#include "video_core/texture_cache/completed_buffer_cache.h"
 #include "video_core/texture_cache/image.h"
 #include "video_core/texture_cache/image_info.h"
 #include "video_core/texture_cache/image_view.h"
@@ -340,29 +343,78 @@ vk::Format TileManager::TilingViewFormat(const Image& image) noexcept {
     }
 }
 
-TileManager::~TileManager() = default;
+struct TileManager::ScratchBufferPool {
+    struct Allocation {
+        Allocation(VmaAllocator allocator, vk::Buffer buffer, VmaAllocation allocation)
+            : allocator{allocator}, buffer{buffer}, allocation{allocation} {}
 
-TileManager::ScratchBuffer TileManager::GetScratchBuffer(u32 size) {
-    constexpr auto usage =
-        vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer |
-        vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst;
+        ~Allocation() {
+            vmaDestroyBuffer(allocator, buffer, allocation);
+        }
 
-    const vk::BufferCreateInfo buffer_ci = {
-        .size = size,
-        .usage = usage,
+        Allocation(const Allocation&) = delete;
+        Allocation& operator=(const Allocation&) = delete;
+
+        VmaAllocator allocator;
+        vk::Buffer buffer;
+        VmaAllocation allocation;
     };
 
-    const VmaAllocationCreateInfo alloc_info{
-        .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
-    };
+    ScratchBufferPool() : cache{RetentionBudget()} {}
 
-    VkBuffer buffer;
-    VmaAllocation allocation;
-    const auto buffer_ci_unsafe = static_cast<VkBufferCreateInfo>(buffer_ci);
-    const auto result = vmaCreateBuffer(instance.GetAllocator(), &buffer_ci_unsafe, &alloc_info,
-                                        &buffer, &allocation, nullptr);
-    ASSERT(result == VK_SUCCESS);
-    return {buffer, allocation};
+    static u64 RetentionBudget() {
+        // Keep an A/B path without changing game settings or the tiling/copy protocol.
+        const char* env = std::getenv("SHADPS4_SCRATCH_POOL");
+        return env != nullptr && env[0] == '0' ? 0 : 32_MB;
+    }
+
+    CompletedBufferCache<Allocation> cache;
+};
+
+TileManager::~TileManager() {
+    if (scratch_pool) {
+        scratch_pool->cache.Close();
+    }
+}
+
+vk::Buffer TileManager::GetScratchBuffer(u32 size) {
+    if (!scratch_pool) {
+        scratch_pool = std::make_shared<ScratchBufferPool>();
+    }
+    auto entry = scratch_pool->cache.Take(size);
+    if (!entry.resource) {
+        constexpr auto usage =
+            vk::BufferUsageFlagBits::eUniformBuffer | vk::BufferUsageFlagBits::eStorageBuffer |
+            vk::BufferUsageFlagBits::eTransferSrc | vk::BufferUsageFlagBits::eTransferDst;
+
+        const vk::BufferCreateInfo buffer_ci = {
+            .size = size,
+            .usage = usage,
+        };
+
+        const VmaAllocationCreateInfo alloc_info{
+            .usage = VMA_MEMORY_USAGE_AUTO_PREFER_DEVICE,
+        };
+
+        VkBuffer buffer{};
+        VmaAllocation allocation{};
+        VmaAllocationInfo allocation_info{};
+        const auto buffer_ci_unsafe = static_cast<VkBufferCreateInfo>(buffer_ci);
+        const auto result = vmaCreateBuffer(instance.GetAllocator(), &buffer_ci_unsafe, &alloc_info,
+                                            &buffer, &allocation, &allocation_info);
+        ASSERT(result == VK_SUCCESS);
+        entry = {.resource = std::make_unique<ScratchBufferPool::Allocation>(
+                     instance.GetAllocator(), vk::Buffer{buffer}, allocation),
+                 .capacity = size,
+                 .allocation_bytes = allocation_info.size};
+    }
+    const vk::Buffer buffer = entry.resource->buffer;
+    // Do not capture TileManager: completion may run after its destruction. The allocation
+    // stays owned by this callback until the same completion point used by the old destroy.
+    scheduler.DeferOperation([pool = scratch_pool, entry = std::move(entry)]() mutable {
+        pool->cache.Return(std::move(entry));
+    });
+    return buffer;
 }
 
 vk::Pipeline TileManager::GetTilingPipeline(const ImageInfo& info, bool is_tiler,
@@ -465,12 +517,9 @@ TileManager::Result TileManager::DetileImage(vk::Buffer in_buffer, u32 in_offset
         stage_input ? static_cast<u32>(Common::AlignUp(u64{buffer_size},
                                                        instance.StorageMinAlignment()))
                     : 0;
-    const auto [out_buffer, out_allocation] = GetScratchBuffer(out_offset + buffer_size);
-    scheduler.DeferOperation([this, out_buffer, out_allocation]() {
-        vmaDestroyBuffer(instance.GetAllocator(), out_buffer, out_allocation);
-    });
+    const auto out_buffer = GetScratchBuffer(out_offset + buffer_size);
 
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::Tiling);
 
     if (stage_input) {
         const auto cmdbuf = scheduler.CommandBuffer();
@@ -585,7 +634,7 @@ void TileManager::TileImage(Image& in_image, std::span<vk::BufferImageCopy> buff
         // Reading the image directly skips the linear copy the tiler would read back, and the
         // scratch buffer that holds it.
         in_image.SetBackingSamples(info.num_samples);
-        scheduler.EndRendering();
+        scheduler.EndRendering(Vulkan::RenderEndReason::Tiling);
         const auto device = instance.GetDevice();
         const vk::ImageViewUsageCreateInfo view_usage_ci{
             .usage = vk::ImageUsageFlagBits::eSampled,
@@ -666,16 +715,12 @@ void TileManager::TileImage(Image& in_image, std::span<vk::BufferImageCopy> buff
         return;
     }
 
-    const auto [temp_buffer, temp_allocation] = GetScratchBuffer(info.guest_size);
-    scheduler.DeferOperation([this, temp_buffer, temp_allocation]() {
-        vmaDestroyBuffer(instance.GetAllocator(), temp_buffer, temp_allocation);
-    });
-
-    const auto cmdbuf = scheduler.CommandBuffer();
     const auto linear_copies = MakeLinearCopies(info, params, buffer_copies, regions);
     if (linear_copies.empty()) {
         return;
     }
+    const auto temp_buffer = GetScratchBuffer(info.guest_size);
+    const auto cmdbuf = scheduler.CommandBuffer();
     in_image.Download(linear_copies, temp_buffer, 0, info.guest_size, true);
 
     cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, GetTilingPipeline(info, true));

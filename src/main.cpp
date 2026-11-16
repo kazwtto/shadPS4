@@ -1,3 +1,4 @@
+#include "video_core/renderer_vulkan/vk_execution_policy.h"
 // SPDX-FileCopyrightText: Copyright 2025-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -69,6 +70,8 @@ int main(int argc, char* argv[]) {
     bool bigPicture = false;
     bool sameProcess = false;
     bool append_log{};
+    std::string gpuMode;
+    bool lazyCache{};
 
     std::optional<std::filesystem::path> addGameFolder;
     std::optional<std::filesystem::path> setAddonFolder;
@@ -96,6 +99,11 @@ int main(int argc, char* argv[]) {
     app.add_option("--wait-for-pid", waitPid);
 
     app.add_flag("--show-fps", showFps);
+    app.add_option("--gpu-mode", gpuMode,
+                   "Execution policy: precise|balanced|fast (same shader accuracy)")
+        ->check(CLI::IsMember({"precise", "balanced", "fast"}));
+    app.add_flag("--lazy-cache", lazyCache,
+                 "Create pipelines on demand; only reuse validated native driver cache");
     app.add_flag("--config-clean", configClean);
     app.add_flag("--config-global", configGlobal);
     app.add_flag("--log-append", append_log);
@@ -150,6 +158,8 @@ int main(int argc, char* argv[]) {
     } catch (const CLI::ParseError& e) {
         return app.exit(e);
     }
+
+    Vulkan::ConfigureExecutionPolicy(gpuMode, lazyCache);
 
     if (waitPid)
         Core::Debugger::WaitForPid(*waitPid);

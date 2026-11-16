@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <array>
+#include <mutex>
+#include <shared_mutex>
 #include <type_traits>
+#include <unordered_set>
 
 #include <glslang/Include/ResourceLimits.h>
 #include <glslang/Public/ShaderLang.h>
@@ -336,6 +339,96 @@ vk::ShaderModule Compile(const HostShaders::ShaderSource& source, vk::ShaderStag
     return CompileSPV(out_code, device);
 }
 
+namespace {
+
+std::shared_mutex empty_fragment_mutex;
+std::unordered_set<u64> empty_fragment_modules;
+
+u64 ModuleKey(vk::ShaderModule module) {
+    return reinterpret_cast<u64>(static_cast<VkShaderModule>(module));
+}
+
+/// Conservative SPIR-V scan. Only a single Fragment entry point whose body consists solely of
+/// labels, plain branches/merges, debug line info and OpReturn is accepted. Any other instruction
+/// in the entry function (loads, stores, calls, variables, demote/kill, atomics, image ops...) or
+/// a DepthReplacing/StencilRefReplacing execution mode rejects the module.
+bool IsEmptyFragmentSpirv(std::span<const u32> code) {
+    constexpr u32 SpirvMagic = 0x07230203;
+    constexpr u32 HeaderWords = 5;
+    constexpr u32 OpLine = 8;
+    constexpr u32 OpEntryPoint = 15;
+    constexpr u32 OpExecutionMode = 16;
+    constexpr u32 OpFunction = 54;
+    constexpr u32 OpFunctionEnd = 56;
+    constexpr u32 OpSelectionMerge = 247;
+    constexpr u32 OpLabel = 248;
+    constexpr u32 OpBranch = 249;
+    constexpr u32 OpReturn = 253;
+    constexpr u32 OpNoLine = 317;
+    constexpr u32 ExecutionModelFragment = 4;
+    constexpr u32 ExecutionModeDepthReplacing = 12;
+    constexpr u32 ExecutionModeStencilRefReplacingEXT = 5027;
+
+    if (code.size() < HeaderWords || code[0] != SpirvMagic) {
+        return false;
+    }
+    u32 entry_point_count = 0;
+    u32 entry_function = 0;
+    bool entry_function_found = false;
+    bool in_entry_function = false;
+    size_t i = HeaderWords;
+    while (i < code.size()) {
+        const u32 op = code[i] & 0xFFFFu;
+        const u32 count = code[i] >> 16;
+        if (count == 0 || i + count > code.size()) {
+            return false;
+        }
+        switch (op) {
+        case OpEntryPoint:
+            if (count < 4) {
+                return false;
+            }
+            ++entry_point_count;
+            if (code[i + 1] == ExecutionModelFragment) {
+                entry_function = code[i + 2];
+            }
+            break;
+        case OpExecutionMode:
+            if (count >= 3 && (code[i + 2] == ExecutionModeDepthReplacing ||
+                               code[i + 2] == ExecutionModeStencilRefReplacingEXT)) {
+                return false;
+            }
+            break;
+        case OpFunction:
+            in_entry_function = entry_function != 0 && count >= 3 && code[i + 2] == entry_function;
+            entry_function_found |= in_entry_function;
+            break;
+        case OpFunctionEnd:
+            in_entry_function = false;
+            break;
+        default:
+            if (in_entry_function) {
+                switch (op) {
+                case OpLine:
+                case OpNoLine:
+                case OpSelectionMerge:
+                case OpLabel:
+                case OpBranch:
+                case OpReturn:
+                    break;
+                default:
+                    return false;
+                }
+            }
+            break;
+        }
+        i += count;
+    }
+    return entry_point_count == 1 && entry_function != 0 && entry_function_found;
+}
+
+} // namespace
+
 vk::ShaderModule CompileSPV(std::span<const u32> code, vk::Device device) {
     const vk::ShaderModuleCreateInfo shader_info = {
         .codeSize = code.size() * sizeof(u32),
@@ -345,7 +438,30 @@ vk::ShaderModule CompileSPV(std::span<const u32> code, vk::Device device) {
     auto [module_result, module] = device.createShaderModule(shader_info);
     ASSERT_MSG(module_result == vk::Result::eSuccess, "Failed to compile SPIR-V shader: {}",
                vk::to_string(module_result));
+
+    // Always refresh the entry for this handle: a destroyed module's handle may be reused.
+    const bool is_empty_fragment = IsEmptyFragmentSpirv(code);
+    {
+        std::unique_lock lock{empty_fragment_mutex};
+        if (is_empty_fragment) {
+            empty_fragment_modules.insert(ModuleKey(module));
+        } else {
+            empty_fragment_modules.erase(ModuleKey(module));
+        }
+    }
+    if (is_empty_fragment) {
+        LOG_INFO(Render_Vulkan, "Fragment shader module {:#x} has an empty entry point",
+                 ModuleKey(module));
+    }
     return module;
+}
+
+bool IsEmptyFragmentModule(vk::ShaderModule module) {
+    if (!module) {
+        return false;
+    }
+    std::shared_lock lock{empty_fragment_mutex};
+    return empty_fragment_modules.contains(ModuleKey(module));
 }
 
 } // namespace Vulkan

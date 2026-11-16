@@ -18,6 +18,7 @@
 #include "video_core/amdgpu/liverpool.h"
 #include "video_core/buffer_cache/buffer_cache.h"
 #include "video_core/buffer_cache/memory_tracker.h"
+#include "video_core/cache_memory_budget.h"
 #include "video_core/gpu_authority_tracker.h"
 #include "video_core/guest_copy_engine.h"
 #include "video_core/page_manager.h"
@@ -374,18 +375,9 @@ BufferCache::BufferCache(const Vulkan::Instance& instance_, Vulkan::Scheduler& s
         return;
     }
 
-    const s64 device_local_memory = static_cast<s64>(instance.GetTotalMemoryBudget());
-    const s64 min_spacing_expected = device_local_memory - 1_GB;
-    const s64 min_spacing_critical = device_local_memory - 512_MB;
-    const s64 mem_threshold = std::min<s64>(device_local_memory, TARGET_GC_THRESHOLD);
-    const s64 min_vacancy_expected = (6 * mem_threshold) / 10;
-    const s64 min_vacancy_critical = (2 * mem_threshold) / 10;
-    trigger_gc_memory = static_cast<u64>(
-        std::max<u64>(std::min(device_local_memory - min_vacancy_expected, min_spacing_expected),
-                      DEFAULT_TRIGGER_GC_MEMORY));
-    critical_gc_memory = static_cast<u64>(
-        std::max<u64>(std::min(device_local_memory - min_vacancy_critical, min_spacing_critical),
-                      DEFAULT_CRITICAL_GC_MEMORY));
+    const CacheMemoryBudget budget{instance.GetTotalMemoryBudget(), TARGET_GC_THRESHOLD};
+    trigger_gc_memory = budget.Threshold(1_GB, 60, DEFAULT_TRIGGER_GC_MEMORY);
+    critical_gc_memory = budget.Threshold(512_MB, 20, DEFAULT_CRITICAL_GC_MEMORY);
 }
 
 BufferCache::~BufferCache() {
@@ -751,6 +743,7 @@ void BufferCache::ExecuteStreamCopyBatch(std::span<const StreamCopyRequest> requ
     };
 
     u16 canonical_count = 0;
+    std::array<u32, 3> largest_deduplicated_source{};
     const bool use_hash = requests.size() > 4;
     {
         for (u16 request_index = 0; request_index < requests.size(); ++request_index) {
@@ -790,7 +783,10 @@ void BufferCache::ExecuteStreamCopyBatch(std::span<const StreamCopyRequest> requ
                     }
                 }
 
-                if (canonical_index < 0) {
+                // Equal-sized containment would have been an exact-key hit above. If no
+                // larger canonical source of this type exists, the full scan cannot match.
+                if (canonical_index < 0 &&
+                    key.size < largest_deduplicated_source[static_cast<size_t>(key.type)]) {
                     for (u16 candidate = 0; candidate < canonical_count; ++candidate) {
                         auto& canonical = scratch.canonical_sources[candidate];
                         if (!canonical.deduplicate ||
@@ -817,6 +813,10 @@ void BufferCache::ExecuteStreamCopyBatch(std::span<const StreamCopyRequest> requ
 
             if (canonical_index < 0) {
                 canonical_index = canonical_count++;
+                if (hashable) {
+                    auto& largest = largest_deduplicated_source[static_cast<size_t>(key.type)];
+                    largest = std::max(largest, key.size);
+                }
                 scratch.canonical_sources[canonical_index] = {
                     .key = key,
                     .alignment = request.alignment,
@@ -1178,7 +1178,7 @@ void BufferCache::DownloadBufferMemory(Buffer& buffer, VAddr device_addr, u64 si
         copy.dstOffset += offset;
     }
     download_buffer.Commit();
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferReadback);
     const auto cmdbuf = scheduler.CommandBuffer();
     // Synchronize prior GPU writes to this buffer before the transfer read
     const vk::BufferMemoryBarrier2 pre_barrier = {
@@ -1690,7 +1690,7 @@ void BufferCache::CopyBuffer(VAddr dst, VAddr src, u32 num_bytes, bool dst_gds, 
             .size = num_bytes,
         },
     };
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferCopy);
     const auto cmdbuf = scheduler.CommandBuffer();
     cmdbuf.pipelineBarrier2(vk::DependencyInfo{
         .dependencyFlags = vk::DependencyFlagBits::eByRegion,
@@ -1886,7 +1886,7 @@ bool BufferCache::ServeGuestCopyFromGpuShadows(
         gpu_bytes += piece.size;
     }
 
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferCopy);
     const auto cmdbuf = scheduler.CommandBuffer();
     // Orders the copy after the transfer that wrote the shadow and after earlier readers of the
     // destination, and the consumers recorded next after the copy.
@@ -2085,7 +2085,7 @@ void BufferCache::JoinOverlap(BufferId new_buffer_id, BufferId overlap_id,
         .dstOffset = dst_base_offset,
         .size = overlap.SizeBytes(),
     };
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferCopy);
     const auto cmdbuf = scheduler.CommandBuffer();
 
     boost::container::static_vector<vk::BufferMemoryBarrier2, 2> pre_barriers{};
@@ -2253,7 +2253,7 @@ void BufferCache::SynchronizeBufferRanges(Buffer& buffer, std::span<const SyncRa
 void BufferCache::RecordBufferUpload(Buffer& buffer, vk::Buffer src_buffer,
                                      std::span<const vk::BufferCopy> copies, VAddr device_addr,
                                      size_t total_size_bytes) {
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferUpload);
     const auto cmdbuf = scheduler.CommandBuffer();
     // Only the uploaded span of the buffer takes part in the dependency.
     u64 span_begin = std::numeric_limits<u64>::max();
@@ -2465,7 +2465,7 @@ bool BufferCache::SynchronizeBufferFromImage(Buffer& buffer, VAddr device_addr, 
         range_end = copy_size;
     }
     auto& tile_manager = texture_cache.GetTileManager();
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::ImageUpload);
     const auto dst_access = image.info.props.is_tiled ? vk::AccessFlagBits2::eShaderWrite
                                                        : vk::AccessFlagBits2::eTransferWrite;
     const auto dst_stage = image.info.props.is_tiled ? vk::PipelineStageFlagBits2::eComputeShader
@@ -2536,7 +2536,7 @@ void BufferCache::WriteDataBuffer(Buffer& buffer, VAddr address, const void* val
         std::memcpy(staging, value, num_bytes);
         scheduler.DeferOperation([buffer = std::move(temp_buffer)]() mutable {});
     }
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::Clear);
     const auto cmdbuf = scheduler.CommandBuffer();
     const vk::BufferMemoryBarrier2 pre_barrier = {
         .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,

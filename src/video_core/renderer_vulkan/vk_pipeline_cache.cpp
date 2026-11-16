@@ -38,9 +38,11 @@
 #include "shader_recompiler/runtime_info.h"
 #include "video_core/amdgpu/liverpool.h"
 #include "video_core/cache_storage.h"
+#include "video_core/gow3_diagnostics.h"
 #include "video_core/renderer_vulkan/liverpool_to_vk.h"
 #include "video_core/renderer_vulkan/vk_depth_stencil_state.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
+#include "video_core/renderer_vulkan/vk_execution_policy.h"
 #include "video_core/renderer_vulkan/vk_pipeline_serialization.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
 #include "video_core/renderer_vulkan/vk_shader_util.h"
@@ -181,9 +183,12 @@ void RecycleShaderPools(std::unique_ptr<Shader::Pools> pools) {
     if (!file.IsOpen()) {
         return {};
     }
-    std::vector<u8> blob(file.GetSize());
-    if (blob.size() > sizeof(NativePipelineCacheHeader) + MaxNativePipelineCacheSize ||
-        file.Read(blob) != blob.size()) {
+    const auto size = file.GetSize();
+    if (size > sizeof(NativePipelineCacheHeader) + MaxNativePipelineCacheSize) {
+        return {};
+    }
+    std::vector<u8> blob(size);
+    if (file.Read(blob) != blob.size()) {
         return {};
     }
     return blob;
@@ -1433,7 +1438,7 @@ SHAD_NOINLINE const Shader::RuntimeInfo& PipelineCache::BuildRuntimeInfo(Stage s
 }
 
 std::vector<u8> PipelineCache::LoadNativePipelineCache() {
-    if (!EmulatorSettings.IsPipelineCacheEnabled()) {
+    if (!EmulatorSettings.IsPipelineCacheEnabled() || !GetExecutionPolicy().native_cache) {
         return {};
     }
     auto& database = Storage::DataBase::Instance();
@@ -1441,7 +1446,7 @@ std::vector<u8> PipelineCache::LoadNativePipelineCache() {
     std::vector<u8> blob;
     database.Load(Storage::BlobType::NativePipelineCache, std::string{NativePipelineCacheName},
                   blob);
-    if (blob.empty()) {
+    if (blob.empty() && !GetExecutionPolicy().lazy) {
         blob = ReadLegacyNativePipelineCache();
         if (blob.empty()) {
             return {};
@@ -1466,20 +1471,23 @@ std::vector<u8> PipelineCache::LoadNativePipelineCache() {
         return {};
     }
 
-    std::vector<u8> data(blob.begin() + sizeof(header), blob.end());
+    const auto data = std::span<const u8>{blob}.subspan(sizeof(header));
     if (!ValidateNativePipelineCacheData(data, instance)) {
         LOG_WARNING(Render_Vulkan, "Ignoring incompatible native Vulkan pipeline cache");
         return {};
     }
     LOG_INFO(Render_Vulkan, "Loaded {} KiB native Vulkan pipeline cache", data.size() / 1024);
-    return data;
+    // Keep a single allocation at load: the old copy doubled the native-cache
+    // payload at peak (up to 512 MiB extra). Validation precedes removal.
+    blob.erase(blob.begin(), blob.begin() + sizeof(header));
+    return blob;
 }
 
 void PipelineCache::Sync() {
     SaveNativePipelineCache();
     const bool persisted = !native_pipeline_cache_dirty.load(std::memory_order_acquire);
     Storage::DataBase::Instance().Close();
-    if (persisted) {
+    if (persisted && !GetExecutionPolicy().lazy) {
         RemoveLegacyNativePipelineCache();
     }
 }
@@ -1531,10 +1539,10 @@ void PipelineCache::SaveNativePipelineCache() {
 }
 
 void PipelineCache::StartGraphicsPipelineCompiler() {
-    for (u32 index = 0; index < shader_module_workers.size(); ++index) {
+    for (u32 index = 0; index < GetExecutionPolicy().module_workers; ++index) {
         shader_module_workers[index] = std::jthread{[this, index] { CompilerThread(true, index); }};
     }
-    for (u32 index = 0; index < graphics_pipeline_workers.size(); ++index) {
+    for (u32 index = 0; index < GetExecutionPolicy().pipeline_workers; ++index) {
         graphics_pipeline_workers[index] =
             std::jthread{[this, index] { CompilerThread(false, index); }};
     }
@@ -1638,6 +1646,20 @@ PipelineCache::PipelineCache(const Instance& instance_, Scheduler& scheduler_,
       desc_heap{instance, scheduler.GetMasterSemaphore(), DescriptorHeapSizes},
       optimization{std::make_unique<OptimizationState>()},
       async_shader_recompiling{EmulatorSettings.IsAsyncShaderRecompiling()} {
+    const auto& policy = GetExecutionPolicy();
+    if (policy.selected) {
+        // Runtime compilation must complete before the draw that needs it.
+        async_shader_recompiling = false;
+        LOG_INFO(Render_Vulkan,
+                 "GPU compilation policy: {}; lazy={}; native cache={}; workers={}/{}; "
+                 "required shaders synchronous; accuracy and barriers unchanged",
+                 policy.name, policy.lazy, policy.native_cache, policy.module_workers,
+                 policy.pipeline_workers);
+    }
+    if (VideoCore::Gow3Diagnostics::WaitForShaders()) {
+        async_shader_recompiling = false;
+        LOG_INFO(Render_Vulkan, "Visual test: waiting for shaders; compilation cannot skip draws");
+    }
     const auto& vk12_props = instance.GetVk12Properties();
     profile = Shader::Profile{
         .max_viewport_width = instance.GetMaxViewportWidth(),

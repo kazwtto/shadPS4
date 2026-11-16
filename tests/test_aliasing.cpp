@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright 2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <algorithm>
+#include <vector>
 #include <gtest/gtest.h>
 #include <vulkan/vulkan.hpp>
 
@@ -67,6 +69,104 @@ TEST(AliasingTest, RejectsIncompatibleIntersectionCopies) {
     dst = MakeImageInfo({1920, 1080, 1}, vk::Format::eR8G8B8A8Unorm);
     dst.resources.levels = 2;
     EXPECT_FALSE(GetAliasCopyExtent(src, dst).has_value());
+}
+
+TEST(AliasingTest, MergesSingleTexelWriterIntoWideLinearBacking) {
+    auto backing = MakeImageInfo({128, 1, 1}, vk::Format::eR16G16Sfloat);
+    auto writer = backing;
+    writer.size = {1, 1, 1};
+    EXPECT_EQ(GetAliasCopyExtent(writer, backing), writer.size);
+    EXPECT_EQ(GetAliasCopyExtent(backing, writer), writer.size);
+    EXPECT_TRUE(RequiresSeparateAliasImage(backing, writer));
+}
+
+TEST(AliasingTest, SameByteSizeDoesNotMakeDifferentGeometryAView) {
+    auto cached = MakeImageInfo({128, 1, 1});
+    cached.guest_size = 512;
+    auto requested = cached;
+    requested.size = {1, 1, 1};
+    EXPECT_FALSE(IsImageCacheMatch(cached, requested, false));
+    EXPECT_TRUE(RequiresSeparateAliasImage(cached, requested));
+    EXPECT_TRUE(RequiresSeparateAliasImage(requested, cached));
+}
+
+TEST(AliasingTest, RejectsCrossingRectanglesThatCannotPreserveOneFullBacking) {
+    auto wide = MakeImageInfo({128, 32, 1});
+    auto tall = wide;
+    tall.size = {64, 64, 1};
+    EXPECT_FALSE(GetAliasCopyExtent(wide, tall));
+    EXPECT_FALSE(GetAliasCopyExtent(tall, wide));
+    EXPECT_FALSE(RequiresSeparateAliasImage(wide, tall));
+}
+
+TEST(AliasingTest, DoesNotExpandTiledWidthIntersectionSupport) {
+    auto backing = MakeImageInfo({128, 32, 1});
+    backing.props.is_tiled = true;
+    backing.tile_mode = AmdGpu::TileMode::Thin1DThin;
+    backing.array_mode = AmdGpu::ArrayMode::Array1DTiledThin1;
+    auto writer = backing;
+    writer.size = {64, 16, 1};
+    EXPECT_FALSE(GetAliasCopyExtent(writer, backing));
+    EXPECT_FALSE(RequiresSeparateAliasImage(backing, writer));
+}
+
+TEST(AliasingTest, EqualGeometryStillAllowsCompatibleFormatView) {
+    const auto cached = MakeImageInfo({128, 32, 1});
+    auto requested = cached;
+    requested.pixel_format = vk::Format::eR8G8B8A8Srgb;
+    EXPECT_TRUE(IsImageCacheMatch(cached, requested, false));
+    EXPECT_FALSE(RequiresSeparateAliasImage(cached, requested));
+}
+
+TEST(AliasingTest, WidthMergeRejectsExtraMipsLayersAndSamples) {
+    const auto backing = MakeImageInfo({128, 32, 1});
+    auto writer = backing;
+    writer.size = {64, 16, 1};
+    writer.resources.levels = 2;
+    EXPECT_FALSE(GetAliasCopyExtent(writer, backing));
+    writer.resources.levels = 1;
+    writer.resources.layers = 2;
+    EXPECT_FALSE(GetAliasCopyExtent(writer, backing));
+    writer.resources.layers = 1;
+    writer.num_samples = 4;
+    auto multisampled = backing;
+    multisampled.num_samples = 4;
+    EXPECT_FALSE(GetAliasCopyExtent(writer, multisampled));
+}
+
+TEST(AliasingTest, PartialLinearWriterPreservesUnwrittenRowsAndColumns) {
+    const auto backing_info = MakeImageInfo({8, 4, 1});
+    auto writer_info = backing_info;
+    writer_info.size = {2, 2, 1};
+    const auto extent = GetAliasCopyExtent(writer_info, backing_info);
+    ASSERT_TRUE(extent);
+    std::vector<u32> backing(32);
+    for (u32 i = 0; i < backing.size(); ++i) {
+        backing[i] = i + 1;
+    }
+    std::vector<u32> writer(16, 0xDEADBEEF);
+    writer[0] = 101;
+    writer[1] = 102;
+    writer[8] = 103;
+    writer[9] = 104;
+    for (u32 y = 0; y < extent->height; ++y) {
+        std::copy_n(writer.begin() + y * writer_info.pitch, extent->width,
+                    backing.begin() + y * backing_info.pitch);
+    }
+    for (u32 i = 0; i < backing.size(); ++i) {
+        const u32 expected = i == 0 ? 101 : i == 1 ? 102 : i == 8 ? 103 : i == 9 ? 104 : i + 1;
+        EXPECT_EQ(backing[i], expected) << i;
+    }
+}
+
+TEST(AliasingTest, PreservesSupportedTiledHeightAliases) {
+    auto cached = MakeImageInfo({128, 32, 1});
+    cached.props.is_tiled = true;
+    cached.tile_mode = AmdGpu::TileMode::Thin1DThin;
+    cached.array_mode = AmdGpu::ArrayMode::Array1DTiledThin1;
+    auto requested = cached;
+    requested.size.height = 16;
+    EXPECT_TRUE(RequiresSeparateAliasImage(cached, requested));
 }
 
 TEST(ImageCacheMatchTest, RejectsLinearAndTiledImagesWithIdenticalByteSize) {

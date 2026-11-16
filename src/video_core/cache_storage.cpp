@@ -12,6 +12,7 @@
 #include "video_core/cache_archive.h"
 #include "video_core/cache_storage.h"
 #include "video_core/cache_task_queue.h"
+#include "video_core/renderer_vulkan/vk_execution_policy.h"
 
 #include <miniz.h>
 
@@ -104,6 +105,7 @@ void DataBase::Open(bool use_uniform_buffers, bool use_raw_access_chains) {
     using namespace Common::FS;
     archive_mode = EmulatorSettings.IsPipelineCacheArchived();
     const auto cache_name = std::string{game_info.GameSerial()} +
+                            (Vulkan::GetExecutionPolicy().lazy ? "_lazy_native_v1" : "") +
                             (use_uniform_buffers ? "_ubo_v1" : "") +
                             (use_raw_access_chains ? "_raw_v1" : "");
 

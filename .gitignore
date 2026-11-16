@@ -421,3 +421,17 @@ cmake-build-*
 
 # Nix Result symlink
 result
+
+# Local scratch data and downloaded archives
+/research/
+/src/src.zip
+
+# Rust launcher build outputs and local runtime data
+/GOW3_Launcher/launcher-rs/target/
+/GOW3_Launcher/launcher-rs/data/
+/GOW3_Launcher/launcher-rs/dados/
+/GOW3_Launcher/launcher-rs/dist/
+/GOW3_Launcher/launcher-rs/screenshots/
+/GOW3_Launcher/launcher-rs/.startup-review-*/
+/GOW3_Launcher/launcher-rs/.ui-review-data/
+/GOW3_Launcher/launcher-rs/.smoke-data/

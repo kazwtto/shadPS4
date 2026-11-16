@@ -329,6 +329,9 @@ bool Scheduler::BeginGpuTiming(GpuWork kind, u64 resource0, u64 resource1, u64 w
         return false;
     }
     GpuTimingLabel label{};
+    if (kind == GpuWork::RenderBegin || kind == GpuWork::RenderEnd) {
+        label.shader0 = static_cast<u64>(last_render_end_reason);
+    }
     if (kind == GpuWork::Draw || kind == GpuWork::Dispatch) {
         label = gpu_timing_label;
         label.pipeline = GpuHandle(gpu_timing_pipelines[kind == GpuWork::Dispatch]);
@@ -352,13 +355,13 @@ void Scheduler::EndGpuTiming() {
 
 void Scheduler::EndGpuTimingFrame() {
     if (gpu_timing) {
-        EndRendering();
+        EndRendering(RenderEndReason::ProfilingFrame);
         Record([this](vk::CommandBuffer cmdbuf) { gpu_timing->EndFrame(cmdbuf); });
     }
 }
 
 SHAD_NO_INLINE void Scheduler::BeginNewRendering(const RenderState& new_state) {
-    EndRendering();
+    EndRendering(RenderEndReason::RenderState);
     const GpuTimingScope timing{
         *this, GpuWork::RenderBegin,
         new_state.num_color_attachments ? GpuHandle(new_state.color_attachments[0].image_view) : 0,
@@ -369,8 +372,13 @@ SHAD_NO_INLINE void Scheduler::BeginNewRendering(const RenderState& new_state) {
         [state = render_state](vk::CommandBuffer cmdbuf) { BeginRenderingCommand(cmdbuf, state); });
 }
 
-SHAD_NO_INLINE void Scheduler::EndRenderingScope() {
-    const GpuTimingScope timing{*this, GpuWork::RenderEnd};
+SHAD_NO_INLINE void Scheduler::EndRenderingScope(RenderEndReason reason) {
+    last_render_end_reason = reason;
+    const GpuTimingScope timing{
+        *this, GpuWork::RenderEnd,
+        render_state.num_color_attachments ? GpuHandle(render_state.color_attachments[0].image_view)
+                                          : 0,
+        GpuHandle(render_state.depth_stencil_attachment.image_view)};
     is_rendering = false;
     Record([](vk::CommandBuffer cmdbuf) { cmdbuf.endRendering(); });
 }
@@ -639,7 +647,7 @@ void Scheduler::SubmitExecution(SubmitInfo& info) {
     }
 #endif
 
-    EndRendering();
+    EndRendering(RenderEndReason::Submission);
     Check(current_cmdbuf.end());
     const Prologue prologue = RecordPrologue(CollectPrologue(), signal_value, info);
     if (gpu_timing) {
@@ -756,7 +764,7 @@ void Scheduler::PriorityPendingOpsThread(std::stop_token stoken) {
 }
 
 void Scheduler::SubmitRecordedExecution(SubmitInfo& info) {
-    EndRendering();
+    EndRendering(RenderEndReason::Submission);
 
     const u64 signal_value = master_semaphore.NextTick();
     info.AddSignal(master_semaphore.Handle(), signal_value);
@@ -1091,7 +1099,8 @@ void DynamicState::Commit(const Instance& instance, Scheduler& scheduler) {
         emit.bits |= DynamicStateEmit::LineWidth;
         emit.line_width = line_width;
     }
-    if (dirty_state.feedback_loop_enabled && instance.IsAttachmentFeedbackLoopLayoutSupported()) {
+    if (dirty_state.feedback_loop_enabled &&
+        instance.IsAttachmentFeedbackLoopDynamicStateSupported()) {
         dirty_state.feedback_loop_enabled = false;
         emit.bits |= DynamicStateEmit::FeedbackLoop;
         emit.feedback_loop_enabled = feedback_loop_enabled;

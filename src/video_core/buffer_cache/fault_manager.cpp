@@ -139,7 +139,7 @@ void FaultManager::ProcessFaultBuffer() {
             .pBufferInfo = &download_info,
         },
     }};
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::BufferFault);
     const auto cmdbuf = scheduler.CommandBuffer();
     cmdbuf.pipelineBarrier2(vk::DependencyInfo{
         .dependencyFlags = vk::DependencyFlagBits::eByRegion,

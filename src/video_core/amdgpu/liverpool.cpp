@@ -1120,6 +1120,9 @@ SHAD_NO_INLINE bool Liverpool::TryPromoteGoW3Eos(const PM4CmdEventWriteEos& pack
 
     if (promoted) {
         auto candidate = *cand_opt;
+        // The staging reservation includes pitch padding. Only the copied payload belongs
+        // to this authority; shadow consumers must obtain every other byte from guest RAM.
+        candidate.download_size = authority_shadow->size;
 
         auto& authority_tracker = VideoCore::GpuAuthorityTracker::Instance();
         const auto [authority_seq, virtual_fence_seq, label_generation] =

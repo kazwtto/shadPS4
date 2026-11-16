@@ -114,7 +114,8 @@ public:
     GuestCopyEngine& operator=(const GuestCopyEngine&) = delete;
 
     /// Starts the worker pool. A worker count of zero keeps every copy inline.
-    void Start(u32 num_workers);
+    // idle_spin_us bounds polling while no work is available. Completion ordering is unchanged.
+    void Start(u32 num_workers, u32 idle_spin_us = 40);
 
     /// Drains and joins the worker pool.
     void Stop();
@@ -309,6 +310,8 @@ private:
     AtomicStats stats;
 
     std::vector<std::jthread> workers;
+    // Written before starting workers; immutable until all workers have joined.
+    u64 worker_spin_ns{40'000};
 };
 
 } // namespace VideoCore

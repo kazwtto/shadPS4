@@ -47,20 +47,33 @@ std::optional<Extent3D> GetAliasCopyExtent(const ImageInfo& src, const ImageInfo
         return dst.size;
     }
 
+    // A pending partial writer must merge into a backing that covers the whole union.
+    // Crossing rectangles would lose the writer's uncovered rows/columns when it is committed.
+    const bool nested_extents =
+        (src.size.width >= dst.size.width && src.size.height >= dst.size.height) ||
+        (dst.size.width >= src.size.width && dst.size.height >= src.size.height);
+    const bool linear_width_intersection = !src.props.is_tiled && !dst.props.is_tiled &&
+                                           src.num_samples == 1 && nested_extents;
     const bool can_copy_intersection = !src.props.is_block && src.resources.levels == 1 &&
                                        dst.resources.levels == 1 && src.resources.layers == 1 &&
                                        dst.resources.layers == 1 && src.size.depth == 1 &&
-                                       dst.size.depth == 1 && src.size.width == dst.size.width &&
+                                       dst.size.depth == 1 &&
+                                       (src.size.width == dst.size.width || linear_width_intersection) &&
                                        IsVulkanFormatCompatible(src.pixel_format, dst.pixel_format);
     if (!can_copy_intersection) {
         return std::nullopt;
     }
 
     return Extent3D{
-        .width = src.size.width,
+        .width = std::min(src.size.width, dst.size.width),
         .height = std::min(src.size.height, dst.size.height),
         .depth = 1,
     };
+}
+
+bool RequiresSeparateAliasImage(const ImageInfo& cached, const ImageInfo& requested) {
+    return cached.size != requested.size && GetAliasCopyExtent(cached, requested) &&
+           GetAliasCopyExtent(requested, cached);
 }
 
 } // namespace VideoCore

@@ -203,6 +203,7 @@ private:
     struct ImageDescriptorBinding {
         VideoCore::ImageId image_id;
         u32 descriptor_index;
+        u32 transition_index;
     };
     boost::container::static_vector<ImageDescriptorBinding, Shader::NUM_IMAGES>
         image_descriptor_bindings;
@@ -217,6 +218,12 @@ private:
     Pipeline::BufferBarriers buffer_barriers;
     vk::PipelineStageFlags2 shader_stages{};
     Shader::PushData push_data;
+
+    u64 effect_probe_occurrence{};
+    bool effect_probe_active{};
+    void ProbeEffectImage(VideoCore::ImageId image_id,
+                          const VideoCore::ImageViewInfo& view, const char* role, u32 slot,
+                          const Shader::Info& stage);
 
     struct PendingBufferBinding {
         const Shader::BufferResource* desc{};

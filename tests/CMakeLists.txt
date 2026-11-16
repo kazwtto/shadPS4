@@ -194,8 +194,18 @@ set(GCN_TEST_SOURCES
 )
 
 set(VIDEO_CORE_TEST_SOURCES
+    test_effect_probe.cpp
+    test_mip_upload_baseline.cpp
+    test_feedback_loop.cpp
+    test_image_readback_layout.cpp
+    test_visual_texture_state.cpp
+    test_texture_descriptor_layout.cpp
+    test_authority_read_watch.cpp
+    test_attachment_layout.cpp
     test_blend_rewrite.cpp
     test_depth_stencil_state.cpp
+    test_cache_memory_budget.cpp
+    test_completed_buffer_cache.cpp
 )
 
 add_executable(shadps4_settings_test ${SETTINGS_TEST_SOURCES})
@@ -276,6 +286,8 @@ target_link_libraries(shadps4_common_test PRIVATE
 target_link_libraries(shadps4_cache_storage_test PRIVATE GTest::gtest_main miniz::miniz)
 target_link_libraries(shadps4_video_core_test PRIVATE
     GTest::gtest_main
+    Boost::headers
+    Vulkan::Headers
     fmt::fmt
     spdlog::spdlog
 )

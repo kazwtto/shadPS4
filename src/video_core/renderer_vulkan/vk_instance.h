@@ -223,6 +223,10 @@ public:
         return attachment_feedback_loop;
     }
 
+    bool IsAttachmentFeedbackLoopDynamicStateSupported() const {
+        return attachment_feedback_loop_dynamic;
+    }
+
     /// Returns true when VK_EXT_custom_border_color is supported
     bool IsCustomBorderColorSupported() const {
         return custom_border_color;
@@ -635,6 +639,7 @@ private:
     bool workgroup_memory_explicit_layout{};
     bool maintenance_8{};
     bool attachment_feedback_loop{};
+    bool attachment_feedback_loop_dynamic{};
     bool image_2d_view_of_3d{};
     bool image_view_min_lod{};
     bool supports_memory_budget{};

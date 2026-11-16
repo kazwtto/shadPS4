@@ -11,6 +11,8 @@
 #include "video_core/renderer_vulkan/liverpool_to_vk.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
 #include "video_core/renderer_vulkan/vk_scheduler.h"
+#include "video_core/texture_cache/attachment_layout.h"
+#include "video_core/texture_cache/image_access.h"
 #include "video_core/texture_cache/blit_helper.h"
 #include "video_core/texture_cache/image.h"
 
@@ -301,7 +303,6 @@ Image::Image(const Vulkan::Instance& instance_, Vulkan::Scheduler& scheduler_,
     }
     image_uid = global_image_uid.Next();
     readback_token = std::make_shared<ImageReadbackToken>(image_uid);
-    mip_hashes.resize(info.resources.levels);
     // Here we force `eExtendedUsage` as don't know all image usage cases beforehand. In normal case
     // the texture cache should re-create the resource with the usage requested
     vk::ImageCreateFlags flags{vk::ImageCreateFlagBits::eMutableFormat |
@@ -396,19 +397,14 @@ ImageView& Image::FindView(const ImageViewInfo& view_info, bool ensure_guest_sam
 static bool IsStateTransitionRedundant(const Image::State& state, vk::ImageLayout dst_layout,
                                        vk::AccessFlags2 dst_mask,
                                        vk::PipelineStageFlags2 dst_stage) {
-    constexpr auto write_flags = vk::AccessFlagBits2::eTransferWrite |
-                                 vk::AccessFlagBits2::eShaderWrite |
-                                 vk::AccessFlagBits2::eMemoryWrite;
-    const bool stage_visible = (state.pl_stage & vk::PipelineStageFlagBits2::eAllCommands) ||
-                              (state.pl_stage & dst_stage) == dst_stage;
-    return state.layout == dst_layout && state.access_mask == dst_mask && stage_visible &&
-           !(state.access_mask & write_flags);
+    return IsImageAccessRedundant(state, dst_layout, dst_mask, dst_stage);
 }
 
 static void RecordImageAccess(Image::State& state, vk::ImageLayout dst_layout,
                               vk::AccessFlags2 dst_mask, vk::PipelineStageFlags2 dst_stage) {
     constexpr auto write_flags = vk::AccessFlagBits2::eTransferWrite |
                                  vk::AccessFlagBits2::eShaderWrite |
+                                 vk::AccessFlagBits2::eShaderStorageWrite |
                                  vk::AccessFlagBits2::eMemoryWrite |
                                  vk::AccessFlagBits2::eColorAttachmentWrite |
                                  vk::AccessFlagBits2::eDepthStencilAttachmentWrite;
@@ -544,6 +540,15 @@ static bool IsTransitionRedundant(const Image& image, const vk::ImageLayout dst_
     return IsStateTransitionRedundant(image.backing->state, dst_layout, dst_mask, dst_stage);
 }
 
+bool Image::IsRangeInLayout(vk::ImageLayout layout, const SubresourceRange& range) const {
+    if (backing->subresource_states.empty()) {
+        return backing->state.layout == layout;
+    }
+    return SubresourcesHaveLayout(std::span<const State>{backing->subresource_states},
+                                 info.resources.levels, info.resources.layers, range.base.level,
+                                 range.base.layer, range.extent.levels, range.extent.layers, layout);
+}
+
 static bool NeedsPartialTransition(const Image& image,
                                    const std::optional<SubresourceRange>& subres_range) {
     return subres_range && (subres_range->base != SubresourceBase{} ||
@@ -576,7 +581,7 @@ static SHAD_NO_INLINE void TransitSlow(Image& image, const vk::ImageLayout dst_l
         return;
     }
 
-    image.scheduler->EndRendering();
+    image.scheduler->EndRendering(Vulkan::RenderEndReason::ImageTransition);
     const auto cmdbuf = image.scheduler->CommandBuffer();
     cmdbuf.pipelineBarrier2(vk::DependencyInfo{
         .imageMemoryBarrierCount = static_cast<u32>(barriers.size()),
@@ -620,7 +625,7 @@ void Image::Transit(vk::ImageLayout dst_layout, vk::AccessFlags2 dst_mask,
 
 void Image::Upload(std::span<const vk::BufferImageCopy> upload_copies, vk::Buffer buffer) {
     SetBackingSamples(info.num_samples, false);
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::ImageUpload);
 
     Barriers image_barriers;
     for (const auto& copy : upload_copies) {
@@ -645,7 +650,7 @@ void Image::Upload(std::span<const vk::BufferImageCopy> upload_copies, vk::Buffe
 void Image::Download(std::span<const vk::BufferImageCopy> download_copies, vk::Buffer buffer,
                      u64 offset, u64 download_size, bool for_tiling) {
     SetBackingSamples(info.num_samples);
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::ImageReadback);
 
     const vk::BufferMemoryBarrier2 pre_barrier = {
         .srcStageMask = vk::PipelineStageFlagBits2::eAllCommands,
@@ -824,7 +829,7 @@ void Image::CopyImage(Image& src_image) {
         regions.push_back(region);
     }
 
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::ImageCopy);
 
     src_image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead, {});
 
@@ -891,7 +896,7 @@ void Image::CopyImageWithBuffer(Image& src_image, vk::Buffer buffer, u64 offset)
         .size = VK_WHOLE_SIZE,
     };
 
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::ImageCopy);
     src_image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead, {});
     Transit(vk::ImageLayout::eTransferDstOptimal, vk::AccessFlagBits2::eTransferWrite, {});
 
@@ -956,7 +961,7 @@ void Image::CopyMip(Image& src_image, u32 mip, u32 slice) {
     SetBackingSamples(info.num_samples);
     src_image.SetBackingSamples(src_info.num_samples);
 
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::ImageCopy);
     Transit(vk::ImageLayout::eTransferDstOptimal, vk::AccessFlagBits2::eTransferWrite, {});
     src_image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead, {});
 
@@ -971,7 +976,7 @@ void Image::CopyMip(Image& src_image, u32 mip, u32 slice) {
 void Image::Resolve(Image& src_image, const VideoCore::SubresourceRange& mrt0_range,
                     const VideoCore::SubresourceRange& mrt1_range) {
     SetBackingSamples(1, false);
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::Resolve);
 
     src_image.Transit(vk::ImageLayout::eTransferSrcOptimal, vk::AccessFlagBits2::eTransferRead,
                       mrt0_range);
@@ -1035,7 +1040,7 @@ void Image::Clear(const vk::ClearValue& clear_value, const VideoCore::Subresourc
         .baseArrayLayer = range.base.layer,
         .layerCount = range.extent.layers,
     };
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::Clear);
     Transit(vk::ImageLayout::eTransferDstOptimal, vk::AccessFlagBits2::eTransferWrite, {});
     const auto cmdbuf = scheduler->CommandBuffer();
     cmdbuf.clearColorImage(GetImage(), vk::ImageLayout::eTransferDstOptimal, clear_value.color,
@@ -1068,7 +1073,7 @@ SHAD_NO_INLINE void Image::SwapBackingSamples(u32 num_samples, bool copy_backing
     }
 
     if (copy_backing) {
-        scheduler->EndRendering();
+        scheduler->EndRendering(Vulkan::RenderEndReason::SampleCount);
         ASSERT(info.resources.levels == 1 && info.resources.layers == 1);
 
         // Transition current backing to shader read layout

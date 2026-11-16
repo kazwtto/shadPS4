@@ -13,6 +13,7 @@
 #include "shader_recompiler/info.h"
 #include "shader_recompiler/ir/attribute.h"
 #include "video_core/renderer_vulkan/liverpool_to_vk.h"
+#include "video_core/renderer_vulkan/feedback_loop.h"
 #include "video_core/renderer_vulkan/vk_blend_rewrite.h"
 #include "video_core/renderer_vulkan/vk_graphics_pipeline.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
@@ -200,6 +201,8 @@ GraphicsPipeline::GraphicsPipeline(
         dynamic_states.push_back(vk::DynamicState::eDepthBoundsTestEnable);
         dynamic_states.push_back(vk::DynamicState::eDepthBounds);
     }
+    AddFeedbackLoopDynamicState(dynamic_states, instance.IsAttachmentFeedbackLoopLayoutSupported(),
+                                instance.IsAttachmentFeedbackLoopDynamicStateSupported());
     if (instance.IsDynamicColorWriteMaskSupported()) {
         dynamic_states.push_back(vk::DynamicState::eColorWriteMaskEXT);
     }
@@ -276,11 +279,21 @@ GraphicsPipeline::GraphicsPipeline(
     }
     stage = u32(Shader::LogicalStage::Fragment);
     if (infos[stage]) {
-        shader_stages.emplace_back(vk::PipelineShaderStageCreateInfo{
-            .stage = vk::ShaderStageFlagBits::eFragment,
-            .module = modules[stage],
-            .pName = "main",
-        });
+        // A fragment shader that does nothing observable and has no color attachment to write
+        // contributes only a pipeline stage. The vertex stage and the draw itself are kept, so
+        // depth/stencil results are unchanged.
+        const bool omit_empty_fragment =
+            key.mrt_mask == 0 && key.num_color_attachments == 0 &&
+            IsEmptyFragmentModule(modules[stage]);
+        if (omit_empty_fragment) {
+            LOG_DEBUG(Render_Vulkan, "Omitting empty fragment stage from depth-only pipeline");
+        } else {
+            shader_stages.emplace_back(vk::PipelineShaderStageCreateInfo{
+                .stage = vk::ShaderStageFlagBits::eFragment,
+                .module = modules[stage],
+                .pName = "main",
+            });
+        }
     } else if (runtime_infos[u32(Shader::LogicalStage::Fragment)].fs_info.clip_distance_mask) {
         if (!preloading) {
             sdata.fragment = Shader::Backend::SPIRV::EmitDiscardFragmentShader(
@@ -458,6 +471,9 @@ GraphicsPipeline::GraphicsPipeline(
 
     const vk::GraphicsPipelineCreateInfo pipeline_info = {
         .pNext = &pipeline_rendering_ci,
+        .flags = FeedbackLoopPipelineFlags(
+            instance.IsAttachmentFeedbackLoopLayoutSupported(),
+            instance.IsAttachmentFeedbackLoopDynamicStateSupported()),
         .stageCount = static_cast<u32>(shader_stages.size()),
         .pStages = shader_stages.data(),
         .pVertexInputState = !instance.IsVertexInputDynamicState() ? &vertex_input_info : nullptr,

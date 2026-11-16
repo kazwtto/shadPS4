@@ -1,3 +1,4 @@
+#include "video_core/renderer_vulkan/vk_execution_policy.h"
 // SPDX-FileCopyrightText: Copyright 2024-2026 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -24,6 +25,7 @@
 #include "sdl_window.h"
 #include "video_core/amdgpu/liverpool.h"
 #include "video_core/buffer_cache/buffer.h"
+#include "video_core/gow3_diagnostics.h"
 #include "video_core/renderdoc.h"
 #include "video_core/renderer_vulkan/vk_platform.h"
 #include "video_core/renderer_vulkan/vk_presenter.h"
@@ -524,7 +526,12 @@ Presenter::Presenter(Frontend::WindowSDL& window_, AmdGpu::Liverpool* liverpool_
       texture_cache{rasterizer->GetTextureCache()},
       display_pacer{1'000'000'000 / static_cast<s64>(EmulatorSettings.GetVblankFrequency())},
       vrr_pacer{1'000'000'000 / static_cast<s64>(EmulatorSettings.GetVblankFrequency())} {
-    gpu_frames_ahead = std::min(EmulatorSettings.GetGpuFramesAhead(), MaxGpuFramesAhead);
+    const auto& execution_policy = GetExecutionPolicy();
+    gpu_frames_ahead = std::min(execution_policy.name != "legacy" ? execution_policy.frames_ahead
+                                                               : EmulatorSettings.GetGpuFramesAhead(),
+                              MaxGpuFramesAhead);
+    LOG_INFO(Render_Vulkan, "GPU frames ahead: {} (policy {})", gpu_frames_ahead,
+             execution_policy.name);
     const u32 num_images = swapchain.GetImageCount();
     // Four source frames cover all independent ownership states during a host stall: last shown,
     // active present, mailbox and next producer. Keep the old +1 policy for larger swapchains.
@@ -568,6 +575,9 @@ Presenter::Presenter(Frontend::WindowSDL& window_, AmdGpu::Liverpool* liverpool_
 
     SetPostFxOptions(EmulatorSettings.GetUpscaler(), EmulatorSettings.GetAntiAliasing(),
                      EmulatorSettings.GetSharpening(), EmulatorSettings.GetRcasAttenuation());
+    if (VideoCore::Gow3Diagnostics::DisablePostFx()) {
+        LOG_INFO(Render_Vulkan, "Visual test: host FSR, antialiasing and sharpening disabled");
+    }
     postfx_pass.Create(instance);
     pp_pass.Create(device, swapchain.GetSurfaceFormat().format);
 
@@ -1257,7 +1267,7 @@ Frame* Presenter::PrepareFrame(const Libraries::VideoOut::BufferAttributeGroup& 
         .subresourceRange{frame_subresources},
     };
 
-    draw_scheduler.EndRendering();
+    draw_scheduler.EndRendering(Vulkan::RenderEndReason::Presentation);
     const auto cmdbuf = draw_scheduler.CommandBuffer();
     cmdbuf.pipelineBarrier2(vk::DependencyInfo{
         .imageMemoryBarrierCount = 1,
@@ -1351,6 +1361,9 @@ void Presenter::SetPostFxOptions(int upscaler, int aa, int sharpening, int atten
 }
 
 HostPasses::PostFxPass::Settings Presenter::GetPostFxOptions() const {
+    if (VideoCore::Gow3Diagnostics::DisablePostFx()) {
+        return {0, 0, 0, 0};
+    }
     const u32 options = postfx_options.load(std::memory_order_acquire);
     return {static_cast<int>(options & 3), static_cast<int>((options >> 2) & 7),
             static_cast<int>((options >> 5) & 1), static_cast<int>(options >> 6)};
@@ -1361,7 +1374,7 @@ Frame* Presenter::PrepareBlankFrame(bool present_thread) {
     Frame* frame = GetRenderFrame();
 
     auto& scheduler = present_thread ? present_scheduler : draw_scheduler;
-    scheduler.EndRendering();
+    scheduler.EndRendering(Vulkan::RenderEndReason::Presentation);
 
     const auto cmdbuf = scheduler.CommandBuffer();
 

@@ -182,7 +182,8 @@ public:
     void RetireStaleAuthorities();
     void RegisterVirtualFence(const VirtualGpuFence& fence);
 
-    [[nodiscard]] std::vector<std::shared_ptr<GpuAuthorityEntry>> FindOverlaps(VAddr addr, size_t size) const;
+    using AuthorityEntries = boost::container::small_vector<std::shared_ptr<GpuAuthorityEntry>, 8>;
+    [[nodiscard]] AuthorityEntries FindOverlaps(VAddr addr, size_t size) const;
     [[nodiscard]] std::shared_ptr<GpuAuthorityEntry> GetAuthorityForImage(u64 image_uid, u64 version) const;
     [[nodiscard]] std::shared_ptr<GpuAuthorityEntry> GetAuthorityForRange(VAddr addr,
                                                                          size_t size) const;

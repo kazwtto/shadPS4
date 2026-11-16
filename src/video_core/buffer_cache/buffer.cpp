@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: GPL-2.0-or-later
 
 #include <array>
+#include <cstdlib>
+#include <string_view>
 #include "common/alignment.h"
 #include "common/assert.h"
+#include "common/logging/log.h"
 #include "video_core/buffer_cache/buffer.h"
 #include "video_core/renderer_vulkan/liverpool_to_vk.h"
 #include "video_core/renderer_vulkan/vk_instance.h"
@@ -15,6 +18,24 @@
 namespace VideoCore {
 
 Common::IncrementalIdProvider<u64> Buffer::global_uid{};
+
+namespace {
+enum class StreamPlacement { Device, Host, Cached };
+
+// E10: keep the original device policy available for same-build A/B tests.
+// This changes allocation preferences, not buffer contents, barriers or lifetime.
+StreamPlacement StreamMemory() {
+    static const auto placement = [] {
+        const char* env = std::getenv("SHADPS4_STREAM_MEMORY");
+        const std::string_view value = env ? env : "cached";
+        if (value == "device") {
+            return StreamPlacement::Device;
+        }
+        return value == "host" ? StreamPlacement::Host : StreamPlacement::Cached;
+    }();
+    return placement;
+}
+} // namespace
 
 std::string_view BufferTypeName(MemoryUsage type) {
     switch (type) {
@@ -32,11 +53,17 @@ std::string_view BufferTypeName(MemoryUsage type) {
 }
 
 [[nodiscard]] VkMemoryPropertyFlags MemoryUsagePreferredVmaFlags(MemoryUsage usage) {
+    if (usage == MemoryUsage::Stream && StreamMemory() == StreamPlacement::Cached) {
+        return VK_MEMORY_PROPERTY_HOST_COHERENT_BIT | VK_MEMORY_PROPERTY_HOST_CACHED_BIT;
+    }
     return usage != MemoryUsage::DeviceLocal ? VK_MEMORY_PROPERTY_HOST_COHERENT_BIT
                                              : VkMemoryPropertyFlagBits{};
 }
 
 [[nodiscard]] VmaAllocationCreateFlags MemoryUsageVmaFlags(MemoryUsage usage) {
+    if (usage == MemoryUsage::Stream && StreamMemory() == StreamPlacement::Cached) {
+        return VMA_ALLOCATION_CREATE_MAPPED_BIT | VMA_ALLOCATION_CREATE_HOST_ACCESS_RANDOM_BIT;
+    }
     switch (usage) {
     case MemoryUsage::Upload:
     case MemoryUsage::Stream:
@@ -51,6 +78,9 @@ std::string_view BufferTypeName(MemoryUsage type) {
 }
 
 [[nodiscard]] VmaMemoryUsage MemoryUsageVma(MemoryUsage usage) {
+    if (usage == MemoryUsage::Stream && StreamMemory() != StreamPlacement::Device) {
+        return VMA_MEMORY_USAGE_AUTO_PREFER_HOST;
+    }
     switch (usage) {
     case MemoryUsage::DeviceLocal:
     case MemoryUsage::Stream:
@@ -132,10 +162,19 @@ Buffer::Buffer(const Vulkan::Instance& instance_, Vulkan::Scheduler& scheduler_,
         mapped_data = std::span<u8>{std::bit_cast<u8*>(alloc_info.pMappedData), size_bytes};
     }
     is_coherent = property_flags & VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+    if (usage == MemoryUsage::Stream) {
+        LOG_INFO(Render_Vulkan,
+                 "E10 stream allocation: policy={} bytes={} memory_type={} properties={:#x} "
+                 "mapped={} coherent={}",
+                 StreamMemory() == StreamPlacement::Cached ? "cached"
+                     : StreamMemory() == StreamPlacement::Host ? "host" : "device",
+                 size_bytes, alloc_info.memoryType, property_flags, !mapped_data.empty(),
+                 is_coherent);
+    }
 }
 
 void Buffer::Fill(u64 offset, u32 num_bytes, u32 value) {
-    scheduler->EndRendering();
+    scheduler->EndRendering(Vulkan::RenderEndReason::Clear);
     ASSERT_MSG(offset % 4 == 0 && num_bytes % 4 == 0,
                "FillBuffer size must be a multiple of 4 bytes");
     const auto cmdbuf = scheduler->CommandBuffer();
