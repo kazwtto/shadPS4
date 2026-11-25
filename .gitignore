@@ -425,7 +425,6 @@ result
 # Local scratch data and downloaded archives
 /research/
 /src/src.zip
-/builds/
 /externals/MoltenVK/
 
 # Rust launcher build outputs and local runtime data
