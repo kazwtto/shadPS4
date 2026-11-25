@@ -1097,10 +1097,28 @@
     "Verrouillé",
     "Gesperrt"
   ],
-  "Nenhuma build encontrada. Clique em Atualizar lista ou Baixar última versão.": [
-    "No builds found. Click Refresh list or Download latest version.",
-    "No se encontraron builds. Haz clic en Actualizar lista o Descargar última versión.",
-    "Aucune build trouvée. Cliquez sur Actualiser la liste ou Télécharger la dernière version.",
-    "Keine Builds gefunden. Klicke auf Liste aktualisieren oder Neueste Version herunterladen."
+  "Nenhuma build encontrada. Clique em Atualizar lista.": [
+    "No builds found. Click Refresh list.",
+    "No se encontraron builds. Haz clic en Actualizar lista.",
+    "Aucune build trouvée. Cliquez sur Actualiser la liste.",
+    "Keine Builds gefunden. Klicke auf Liste aktualisieren."
+  ],
+  "Usar": [
+    "Use",
+    "Usar",
+    "Utiliser",
+    "Verwenden"
+  ],
+  "Em uso": [
+    "Active",
+    "En uso",
+    "Active",
+    "Aktiv"
+  ],
+  "Baixando...": [
+    "Downloading...",
+    "Descargando...",
+    "Téléchargement...",
+    "Wird heruntergeladen..."
   ]
 }

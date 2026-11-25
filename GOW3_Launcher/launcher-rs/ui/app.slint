@@ -38,7 +38,11 @@ export struct BuildItem {
     name: string,
     detail: string,
     version: string,
+    installed: bool,
     selected: bool,
+    downloading: bool,
+    progress: float,
+    progress-label: string,
 }
 
 export component AppWindow inherits Window {
@@ -109,6 +113,8 @@ export component AppWindow inherits Window {
     in-out property <string> builds-status: "";
     in-out property <[BuildItem]> builds;
     in-out property <string> selected-build: "";
+    in-out property <bool> builds-checking: false;
+    in-out property <bool> any-build-downloading: false;
     // Atualizações publicadas no repositório.
     in-out property <bool> update-available: false;
     in-out property <string> update-title: "";
@@ -259,6 +265,7 @@ export component AppWindow inherits Window {
     callback volume-set(float);
     callback builds-refresh();
     callback build-picked(int);
+    callback build-download(int);
     callback update-check-now();
     callback update-download();
     callback update-dismiss();
@@ -468,7 +475,6 @@ export component AppWindow inherits Window {
                         }
                     }
                     FxNavItem { label: tr-s[6]; icon: @image-url("icons/settings.svg"); selected: root.page == 4; clicked => { root.navigate(4); } }
-                    Text { vertical-stretch: 0; text: "v" + root.app-version; color: Theme.text-tertiary; font-size: 12px; }
                 }
             }
 
@@ -946,7 +952,29 @@ export component AppWindow inherits Window {
                                 x: 0px;
                                 y: 0px;
                                 padding: 20px; spacing: 16px;
-                                FxPageHeading { title: tr-s[6]; subtitle: tr-s[99]; }
+                                HorizontalLayout {
+                                    spacing: 12px;
+                                    FxPageHeading { title: tr-s[6]; subtitle: tr-s[99]; horizontal-stretch: 1; }
+                                    VerticalLayout {
+                                        horizontal-stretch: 0;
+                                        alignment: start;
+                                        Rectangle {
+                                            height: 24px;
+                                            min-width: version-label.min-width + 20px;
+                                            border-radius: 12px;
+                                            background: #FFFFFF0A;
+                                            border-width: 1px;
+                                            border-color: Theme.stroke;
+                                            version-label := Text {
+                                                text: "GoW III Launcher · v" + root.app-version;
+                                                color: Theme.text-secondary;
+                                                font-size: 11px;
+                                                horizontal-alignment: center;
+                                                vertical-alignment: center;
+                                            }
+                                        }
+                                    }
+                                }
                                 HorizontalLayout {
                                     spacing: 6px; alignment: start;
                                     for label[index] in [tr-s[100], tr-s[101], tr-s[102], tr-s[103], tr-s[104], tr-s[105]] : FxSettingsTab {
@@ -984,13 +1012,31 @@ export component AppWindow inherits Window {
                                         padding: 16px; spacing: 16px;
                                         FxFieldRow { label: tr-s[111]; hint: tr-s[112]; state: root.base-state; found-label: tr-s[177]; missing-label: tr-s[178]; empty-hint: tr-s[179]; browse-label: tr-s[180]; value <=> root.base-path; browse => { root.browse(0); } edited => { root.path-changed(); } }
                                         FxFieldRow { label: tr-s[113]; hint: "01.02"; state: root.update-state; found-label: tr-s[177]; missing-label: tr-s[178]; empty-hint: tr-s[179]; browse-label: tr-s[180]; value <=> root.update-path; browse => { root.browse(1); } edited => { root.path-changed(); } }
-                                        Text { vertical-stretch: 0; text: tr-s[114]; color: Theme.text; font-size: 12px; }
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            VerticalLayout {
+                                                horizontal-stretch: 1;
+                                                spacing: 2px;
+                                                Text { vertical-stretch: 0; text: tr-s[114]; color: Theme.text; font-size: 13px; font-weight: 500; }
+                                                Text { vertical-stretch: 0; text: root.builds-status; color: Theme.text-secondary; font-size: 12px; overflow: elide; }
+                                            }
+                                            VerticalLayout {
+                                                horizontal-stretch: 0;
+                                                alignment: center;
+                                                FxButton {
+                                                    text: tr-s[116];
+                                                    icon: @image-url("icons/refresh.svg");
+                                                    enabled: !root.builds-checking && !root.any-build-downloading;
+                                                    clicked => { root.builds-refresh(); }
+                                                }
+                                            }
+                                        }
                                         Rectangle {
-                                            height: 156px;
+                                            height: 176px;
                                             border-radius: 6px;
                                             border-width: 1px;
                                             border-color: Theme.stroke;
-                                            background: transparent;
+                                            background: #00000018;
                                             build-scroll := ScrollView {
                                                 x: 1px; y: 1px;
                                                 width: parent.width - 2px;
@@ -998,29 +1044,136 @@ export component AppWindow inherits Window {
                                                 horizontal-scrollbar-policy: always-off;
                                                 VerticalLayout {
                                                     width: build-scroll.visible-width;
-                                                    padding: 4px;
-                                                    spacing: 2px;
-                                                    if root.builds.length == 0 : Text { height: 40px; vertical-alignment: center; horizontal-alignment: center; text: tr-s[115]; color: Theme.text-secondary; font-size: 12px; }
+                                                    padding: 6px;
+                                                    spacing: 4px;
+                                                    if root.builds.length == 0 : Text { height: 56px; vertical-alignment: center; horizontal-alignment: center; text: tr-s[115]; color: Theme.text-secondary; font-size: 12px; }
                                                     for build[i] in root.builds : Rectangle {
-                                                        height: 34px;
-                                                        border-radius: 4px;
-                                                        background: row.pressed ? #C5294938 : build.selected ? #C5294922 : row.has-hover ? #FFFFFF10 : transparent;
-                                                        Text { x: 10px; y: 2px; width: parent.width - 150px; height: 16px; text: build.name; color: Theme.text; font-size: 12px; overflow: elide; }
-                                                        Text { x: 10px; y: 17px; width: parent.width - 150px; height: 14px; text: build.detail; color: Theme.text-secondary; font-size: 11px; overflow: elide; }
-                                                        Text { x: parent.width - 144px; y: 0px; width: 132px; height: parent.height; horizontal-alignment: right; vertical-alignment: center; text: build.version; color: build.selected ? Theme.accent : Theme.text-tertiary; font-size: 11px; }
-                                                        row := TouchArea { mouse-cursor: pointer; clicked => { root.build-picked(i); } }
+                                                        height: build.downloading ? 54px : 44px;
+                                                        border-radius: 6px;
+                                                        border-width: 1px;
+                                                        border-color: build.selected ? #C5294955 : build.downloading ? #C5294933 : #FFFFFF08;
+                                                        background: build.selected ? #C529491C : (build.installed && row.has-hover) ? #FFFFFF0D : #FFFFFF04;
+                                                        animate background, border-color { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                                                        row := TouchArea {
+                                                            enabled: build.installed && !build.selected && !build.downloading;
+                                                            mouse-cursor: self.enabled ? pointer : default;
+                                                            clicked => { root.build-picked(i); }
+                                                        }
+                                                        HorizontalLayout {
+                                                            x: 12px;
+                                                            y: 4px;
+                                                            width: parent.width - 24px;
+                                                            height: build.downloading ? 40px : 36px;
+                                                            spacing: 10px;
+                                                            VerticalLayout {
+                                                                horizontal-stretch: 1;
+                                                                alignment: center;
+                                                                spacing: 2px;
+                                                                HorizontalLayout {
+                                                                    spacing: 8px;
+                                                                    alignment: start;
+                                                                    Text {
+                                                                        vertical-stretch: 0;
+                                                                        vertical-alignment: center;
+                                                                        text: build.name;
+                                                                        color: Theme.text;
+                                                                        font-size: 12px;
+                                                                        font-weight: 500;
+                                                                        overflow: elide;
+                                                                    }
+                                                                    if build.version != "" : Rectangle {
+                                                                        height: 18px;
+                                                                        min-width: ver-txt.min-width + 12px;
+                                                                        border-radius: 4px;
+                                                                        background: #FFFFFF0F;
+                                                                        ver-txt := Text {
+                                                                            text: build.version;
+                                                                            color: Theme.text-secondary;
+                                                                            font-size: 10px;
+                                                                            horizontal-alignment: center;
+                                                                            vertical-alignment: center;
+                                                                        }
+                                                                    }
+                                                                }
+                                                                Text {
+                                                                    vertical-stretch: 0;
+                                                                    text: build.downloading ? build.progress-label : build.detail;
+                                                                    color: build.downloading ? Theme.accent : Theme.text-secondary;
+                                                                    font-size: 11px;
+                                                                    overflow: elide;
+                                                                }
+                                                            }
+                                                            VerticalLayout {
+                                                                horizontal-stretch: 0;
+                                                                alignment: center;
+                                                                if build.downloading : Rectangle {
+                                                                    height: 26px;
+                                                                    min-width: dl-badge-txt.min-width + 18px;
+                                                                    border-radius: 5px;
+                                                                    background: #C5294922;
+                                                                    border-width: 1px;
+                                                                    border-color: #C5294955;
+                                                                    dl-badge-txt := Text {
+                                                                        text: tr-s[186];
+                                                                        color: Theme.text;
+                                                                        font-size: 11px;
+                                                                        horizontal-alignment: center;
+                                                                        vertical-alignment: center;
+                                                                    }
+                                                                }
+                                                                if !build.downloading && build.selected : Rectangle {
+                                                                    height: 26px;
+                                                                    min-width: active-row.min-width + 18px;
+                                                                    border-radius: 5px;
+                                                                    background: #C529492E;
+                                                                    border-width: 1px;
+                                                                    border-color: #C5294977;
+                                                                    active-row := HorizontalLayout {
+                                                                        padding-left: 9px;
+                                                                        padding-right: 9px;
+                                                                        spacing: 5px;
+                                                                        alignment: center;
+                                                                        Image { width: 12px; height: 12px; y: (parent.height - self.height) / 2; source: @image-url("icons/check.svg"); colorize: Theme.text; }
+                                                                        Text { text: tr-s[185]; color: Theme.text; font-size: 11px; vertical-alignment: center; }
+                                                                    }
+                                                                }
+                                                                if !build.downloading && build.installed && !build.selected : FxButton {
+                                                                    text: tr-s[184];
+                                                                    enabled: !root.busy && !root.running;
+                                                                    clicked => { root.build-picked(i); }
+                                                                }
+                                                                if !build.downloading && !build.installed : FxButton {
+                                                                    text: tr-s[8];
+                                                                    icon: @image-url("icons/download.svg");
+                                                                    primary: true;
+                                                                    enabled: !root.busy && !root.running && !root.any-build-downloading;
+                                                                    clicked => { root.build-download(i); }
+                                                                }
+                                                            }
+                                                        }
+                                                        if build.downloading : Rectangle {
+                                                            x: 12px;
+                                                            y: parent.height - 7px;
+                                                            width: parent.width - 24px;
+                                                            height: 3px;
+                                                            border-radius: 2px;
+                                                            background: #FFFFFF14;
+                                                            Rectangle {
+                                                                x: 0px;
+                                                                y: 0px;
+                                                                width: parent.width * build.progress.clamp(0.06, 1.0);
+                                                                height: parent.height;
+                                                                border-radius: 2px;
+                                                                background: Theme.accent;
+                                                                animate width { duration: 120ms; easing: ease-out; }
+                                                            }
+                                                        }
                                                         accessible-role: list-item;
                                                         accessible-label: build.name;
                                                         accessible-checked: build.selected;
                                                     }
                                                 }
                                             }
-                                        }
-                                        HorizontalLayout {
-                                            spacing: 8px;
-                                            Text { vertical-stretch: 0; vertical-alignment: center; horizontal-stretch: 1; text: root.builds-status; color: Theme.text-secondary; font-size: 12px; overflow: elide; }
-                                            FxButton { text: tr-s[116]; clicked => { root.builds-refresh(); } }
-                                            FxButton { text: tr-s[117]; primary: true; clicked => { root.update-download(); } }
                                         }
                                         HorizontalLayout {
                                             spacing: 8px;

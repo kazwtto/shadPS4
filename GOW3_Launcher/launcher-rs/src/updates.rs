@@ -418,7 +418,22 @@ pub fn remote_builds(repository: &str) -> Result<Vec<RemoteBuild>> {
 
 /// Baixa um executável publicado para a pasta de builds do launcher.
 pub fn download_build(build: &RemoteBuild, builds_dir: &Path) -> Result<PathBuf> {
-    let bytes = http_get(&build.url)?;
+    download_build_with_progress(build, builds_dir, |_, _| {})
+}
+
+/// Baixa um executável publicado para a pasta de builds do launcher reportando progresso.
+pub fn download_build_with_progress<F>(
+    build: &RemoteBuild,
+    builds_dir: &Path,
+    mut on_progress: F,
+) -> Result<PathBuf>
+where
+    F: FnMut(u64, u64),
+{
+    let expected_size = build.size;
+    let bytes = http_get_progress(&build.url, |downloaded, total| {
+        on_progress(downloaded, if total > 0 { total } else { expected_size });
+    })?;
     let target = builds_dir.join(sanitize(&build.name));
     crate::storage::atomic_write(&target, &bytes)?;
     if target
@@ -540,6 +555,15 @@ fn find_executable(dir: &Path) -> Option<PathBuf> {
 /// GET por WinHTTP, seguindo redirecionamentos; devolve o status HTTP.
 #[cfg(windows)]
 pub fn http_get_with(url: &str) -> Result<(u16, Vec<u8>)> {
+    http_get_with_progress(url, |_, _| {})
+}
+
+/// GET por WinHTTP com callback de progresso `(bytes_baixados, total_bytes)`.
+#[cfg(windows)]
+pub fn http_get_with_progress<F>(url: &str, mut on_progress: F) -> Result<(u16, Vec<u8>)>
+where
+    F: FnMut(u64, u64),
+{
     use std::ffi::c_void;
 
     use windows_sys::Win32::Foundation::GetLastError;
@@ -548,7 +572,7 @@ pub fn http_get_with(url: &str) -> Result<(u16, Vec<u8>)> {
         WinHttpReadData, WinHttpReceiveResponse, WinHttpSendRequest, WinHttpSetOption,
         WinHttpSetTimeouts, WINHTTP_ACCESS_TYPE_DEFAULT_PROXY, WINHTTP_FLAG_SECURE,
         WINHTTP_OPTION_REDIRECT_POLICY, WINHTTP_OPTION_REDIRECT_POLICY_ALWAYS,
-        WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_QUERY_STATUS_CODE,
+        WINHTTP_QUERY_CONTENT_LENGTH, WINHTTP_QUERY_FLAG_NUMBER, WINHTTP_QUERY_STATUS_CODE,
     };
 
     struct Handle(*mut c_void);
@@ -647,8 +671,31 @@ pub fn http_get_with(url: &str) -> Result<(u16, Vec<u8>)> {
         return Err(error("WinHttpQueryHeaders falhou"));
     }
 
-    let mut body = Vec::new();
+    let mut content_length: u32 = 0;
+    let mut length_size = std::mem::size_of::<u32>() as u32;
+    let total_bytes = unsafe {
+        if WinHttpQueryHeaders(
+            request.0,
+            WINHTTP_QUERY_CONTENT_LENGTH | WINHTTP_QUERY_FLAG_NUMBER,
+            std::ptr::null(),
+            &mut content_length as *mut u32 as *mut c_void,
+            &mut length_size,
+            std::ptr::null_mut(),
+        ) != 0
+        {
+            content_length as u64
+        } else {
+            0
+        }
+    };
+
+    let mut body = if total_bytes > 0 && total_bytes <= 512 * 1024 * 1024 {
+        Vec::with_capacity(total_bytes as usize)
+    } else {
+        Vec::new()
+    };
     let mut buffer = vec![0u8; 32 * 1024];
+    on_progress(0, total_bytes);
     loop {
         let mut read = 0u32;
         let ok = unsafe {
@@ -666,6 +713,7 @@ pub fn http_get_with(url: &str) -> Result<(u16, Vec<u8>)> {
             break;
         }
         body.extend_from_slice(&buffer[..read as usize]);
+        on_progress(body.len() as u64, total_bytes);
         if body.len() > 512 * 1024 * 1024 {
             bail!("resposta grande demais para um pacote de build");
         }
@@ -678,9 +726,25 @@ pub fn http_get_with(_url: &str) -> Result<(u16, Vec<u8>)> {
     bail!("consultas ao repositório exigem Windows")
 }
 
+#[cfg(not(windows))]
+pub fn http_get_with_progress<F>(_url: &str, _on_progress: F) -> Result<(u16, Vec<u8>)>
+where
+    F: FnMut(u64, u64),
+{
+    bail!("consultas ao repositório exigem Windows")
+}
+
 /// GET exigindo sucesso.
 pub fn http_get(url: &str) -> Result<Vec<u8>> {
-    let (status, body) = http_get_with(url)?;
+    http_get_progress(url, |_, _| {})
+}
+
+/// GET exigindo sucesso, reportando progresso.
+pub fn http_get_progress<F>(url: &str, on_progress: F) -> Result<Vec<u8>>
+where
+    F: FnMut(u64, u64),
+{
+    let (status, body) = http_get_with_progress(url, on_progress)?;
     if status != 200 {
         bail!("o servidor respondeu HTTP {status} para {url}");
     }

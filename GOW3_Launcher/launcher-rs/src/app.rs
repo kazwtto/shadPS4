@@ -60,6 +60,11 @@ enum BgEvent {
         message: String,
         detail: String,
     },
+    DownloadProgress {
+        name: String,
+        downloaded: u64,
+        total: u64,
+    },
     Verified {
         report: ValidationReport,
         signature: String,
@@ -237,6 +242,8 @@ pub struct AppController {
     builds: RefCell<Vec<BuildEntry>>,
     /// Builds remotas disponíveis no GitHub e ainda não baixadas, exibidas após as locais.
     remote_builds: RefCell<Vec<updates::RemoteBuild>>,
+    /// Build atualmente em download: `(nome, bytes_baixados, total_bytes)`.
+    downloading_build: RefCell<Option<(String, u64, u64)>>,
     /// Pasta criada pelo próprio launcher onde as builds são instaladas.
     builds_dir: RefCell<PathBuf>,
     /// Última publicação conhecida e o estado das consultas.
@@ -287,6 +294,7 @@ impl AppController {
             last_alive_check: Cell::new(None),
             builds: RefCell::new(Vec::new()),
             remote_builds: RefCell::new(Vec::new()),
+            downloading_build: RefCell::new(None),
             builds_dir: RefCell::new(PathBuf::new()),
             update_state: RefCell::new(UpdateState::default()),
             last_update_check: Cell::new(None),
@@ -517,6 +525,14 @@ impl AppController {
             self.ui.on_build_picked(move |index| {
                 if let Some(this) = weak.upgrade() {
                     this.pick_build(index);
+                }
+            });
+        }
+        {
+            let weak = Rc::downgrade(self);
+            self.ui.on_build_download(move |index| {
+                if let Some(this) = weak.upgrade() {
+                    this.download_build_at(index);
                 }
             });
         }
@@ -882,12 +898,23 @@ impl AppController {
                         }
                     }
                 }
+                self.ui.set_builds_checking(false);
                 self.persist_update_state();
                 self.publish_update();
                 self.refresh_builds();
             }
+            BgEvent::DownloadProgress {
+                name,
+                downloaded,
+                total,
+            } => {
+                *self.downloading_build.borrow_mut() = Some((name, downloaded, total));
+                self.refresh_builds();
+            }
             BgEvent::UpdateInstalled { result } => {
                 self.update_state.borrow_mut().installing = false;
+                *self.downloading_build.borrow_mut() = None;
+                self.ui.set_any_build_downloading(false);
                 match result {
                     Ok(path) => {
                         self.ui.set_executable_path(path.clone().into());
@@ -911,6 +938,7 @@ impl AppController {
                         &message,
                     ),
                 }
+                self.refresh_builds();
                 self.publish_update();
             }
             BgEvent::Trophies(snapshot) => {
@@ -2978,14 +3006,18 @@ impl AppController {
                 })
             })
             .collect::<Vec<_>>();
-        let status = if let Some(error) = local_error {
+        let downloading_info = self.downloading_build.borrow().clone();
+        let any_downloading = downloading_info.is_some();
+        let status = if let Some((name, downloaded, total)) = &downloading_info {
+            format!("Baixando {name} ({})…", download_progress_text(*downloaded, *total))
+        } else if let Some(error) = local_error {
             error
         } else {
             match (entries.len(), remote_only.len()) {
                 (0, 0) if checking => "Consultando builds no GitHub…".to_string(),
-                (0, 0) => "Nenhuma build encontrada. Clique em Atualizar lista ou Baixar última versão.".to_string(),
-                (0, 1) => "1 build disponível no GitHub (clique para baixar).".to_string(),
-                (0, r) => format!("{r} builds disponíveis no GitHub (clique para baixar)."),
+                (0, 0) => "Nenhuma build encontrada.".to_string(),
+                (0, 1) => "1 build disponível no GitHub.".to_string(),
+                (0, r) => format!("{r} builds disponíveis no GitHub."),
                 (1, 0) => "1 build instalada.".to_string(),
                 (l, 0) => format!("{l} builds instaladas."),
                 (1, 1) => "1 build instalada · 1 disponível no GitHub.".to_string(),
@@ -3004,16 +3036,37 @@ impl AppController {
                 )
                 .into(),
                 version: entry.version_label().into(),
+                installed: true,
                 selected: !selected.is_empty() && entry.path == Path::new(&selected),
+                downloading: false,
+                progress: 0.0,
+                progress_label: SharedString::default(),
             })
             .collect::<Vec<_>>();
         for remote in &remote_only {
+            let active_dl = downloading_info
+                .as_ref()
+                .filter(|(name, _, _)| name.eq_ignore_ascii_case(&remote.name));
+            let (downloading, progress, progress_label) = match active_dl {
+                Some((_, downloaded, total)) => {
+                    let ratio = if *total > 0 {
+                        (*downloaded as f64 / *total as f64).clamp(0.0, 1.0) as f32
+                    } else {
+                        0.0
+                    };
+                    (true, ratio, download_progress_text(*downloaded, *total).into())
+                }
+                None => (false, 0.0, SharedString::default()),
+            };
             items.push(BuildItem {
                 name: remote.name.clone().into(),
-                detail: format!("{} · Disponível no GitHub (clique para baixar)", remote.size_label())
-                    .into(),
+                detail: format!("{} · Disponível no GitHub", remote.size_label()).into(),
                 version: remote.version_label().into(),
+                installed: false,
                 selected: false,
+                downloading,
+                progress,
+                progress_label,
             });
         }
         let label = Path::new(&selected)
@@ -3023,6 +3076,7 @@ impl AppController {
             .to_string();
         self.ui.set_selected_build(label.into());
         self.ui.set_builds_status(status.into());
+        self.ui.set_any_build_downloading(any_downloading);
         self.ui.set_builds(ModelRc::new(VecModel::from(items)));
         *self.builds.borrow_mut() = entries;
         *self.remote_builds.borrow_mut() = remote_only;
@@ -3039,22 +3093,35 @@ impl AppController {
             return;
         }
         let idx = index.max(0) as usize;
+        let Some(entry) = self.builds.borrow().get(idx).cloned() else {
+            return;
+        };
+        self.ui
+            .set_executable_path(entry.path.display().to_string().into());
+        self.refresh_builds();
+        self.on_path_changed();
+        self.set_status(
+            0,
+            "Pronto",
+            "Build selecionada.",
+            &format!("{} · {}", entry.name, entry.size_label()),
+        );
+        self.log_launcher(&format!("Build selecionada: {}", entry.path.display()));
+    }
+
+    fn download_build_at(&self, index: i32) {
+        if self.runtime.borrow().busy || self.runtime.borrow().running {
+            self.set_status(
+                1,
+                "Ocupado",
+                "Aguarde a operação atual.",
+                "O download espera a sessão terminar.",
+            );
+            return;
+        }
+        let idx = index.max(0) as usize;
         let local_len = self.builds.borrow().len();
         if idx < local_len {
-            let Some(entry) = self.builds.borrow().get(idx).cloned() else {
-                return;
-            };
-            self.ui
-                .set_executable_path(entry.path.display().to_string().into());
-            self.refresh_builds();
-            self.on_path_changed();
-            self.set_status(
-                0,
-                "Pronto",
-                "Build selecionada.",
-                &format!("{} · {}", entry.name, entry.size_label()),
-            );
-            self.log_launcher(&format!("Build selecionada: {}", entry.path.display()));
             return;
         }
         let Some(remote) = self.remote_builds.borrow().get(idx - local_len).cloned() else {
@@ -3078,15 +3145,31 @@ impl AppController {
             return;
         }
         self.update_state.borrow_mut().installing = true;
-        self.ui
-            .set_builds_status(format!("Baixando {}…", build.name).into());
+        *self.downloading_build.borrow_mut() = Some((build.name.clone(), 0, build.size));
+        self.ui.set_any_build_downloading(true);
         self.ui
             .set_update_status(format!("Baixando {}…", build.name).into());
         self.ui.set_update_downloadable(false);
+        self.refresh_builds();
         self.set_status(1, "Baixando", &format!("Baixando {}…", build.name), &build.url);
+        let build_name = build.name.clone();
         let sender = self.event_sender.clone();
         spawn_task(sender, move |sender| {
-            let result = updates::download_build(&build, &directory);
+            let mut last_emit = Instant::now() - Duration::from_millis(200);
+            let result = updates::download_build_with_progress(&build, &directory, |downloaded, total| {
+                let now = Instant::now();
+                if downloaded == 0
+                    || (total > 0 && downloaded >= total)
+                    || now.duration_since(last_emit) >= Duration::from_millis(80)
+                {
+                    last_emit = now;
+                    let _ = sender.send(BgEvent::DownloadProgress {
+                        name: build_name.clone(),
+                        downloaded,
+                        total,
+                    });
+                }
+            });
             let _ = sender.send(BgEvent::UpdateInstalled {
                 result: result
                     .map(|path| path.display().to_string())
@@ -3190,8 +3273,10 @@ impl AppController {
         }
         self.update_state.borrow_mut().checking = true;
         self.last_update_check.set(Some(Instant::now()));
+        self.ui.set_builds_checking(true);
         self.ui
             .set_update_status(format!("Consultando {repo}…").into());
+        self.refresh_builds();
         let sender = self.event_sender.clone();
         spawn_task(sender, move |sender| {
             let release = updates::latest_release(&repo);
@@ -3819,6 +3904,19 @@ fn published_builds(count: usize) -> String {
 }
 
 /// Primeiros sete caracteres do sha, como o GitHub mostra.
+fn download_progress_text(downloaded: u64, total: u64) -> String {
+    let dl_mb = downloaded as f64 / (1024.0 * 1024.0);
+    if total > 0 {
+        let total_mb = total as f64 / (1024.0 * 1024.0);
+        let pct = ((downloaded as f64 / total as f64) * 100.0).clamp(0.0, 100.0);
+        format!("{pct:.0}% · {dl_mb:.1} / {total_mb:.1} MB")
+    } else if downloaded > 0 {
+        format!("{dl_mb:.1} MB baixados…")
+    } else {
+        "Conectando ao GitHub…".to_string()
+    }
+}
+
 fn short_sha(sha: &str) -> String {
     sha.chars().take(7).collect()
 }
