@@ -683,11 +683,11 @@
     "Mise à jour",
     "Update"
   ],
-  "Pasta de builds": [
-    "Builds folder",
-    "Carpeta de builds",
-    "Dossier des builds",
-    "Builds-Ordner"
+  "Builds do shadPS4": [
+    "shadPS4 builds",
+    "Builds de shadPS4",
+    "Builds de shadPS4",
+    "shadPS4-Builds"
   ],
   "Atualizar lista": [
     "Refresh list",
@@ -1097,10 +1097,10 @@
     "Verrouillé",
     "Gesperrt"
   ],
-  "Nenhuma build baixada ainda. Verifique as atualizações.": [
-    "No builds downloaded yet. Check for updates.",
-    "Todavía no hay builds descargadas. Comprueba las actualizaciones.",
-    "Aucune build téléchargée pour l'instant. Vérifiez les mises à jour.",
-    "Noch keine Builds heruntergeladen. Prüfe die Updates."
+  "Nenhuma build encontrada. Clique em Atualizar lista ou Baixar última versão.": [
+    "No builds found. Click Refresh list or Download latest version.",
+    "No se encontraron builds. Haz clic en Actualizar lista o Descargar última versión.",
+    "Aucune build trouvée. Cliquez sur Actualiser la liste ou Télécharger la dernière version.",
+    "Keine Builds gefunden. Klicke auf Liste aktualisieren oder Neueste Version herunterladen."
   ]
 }

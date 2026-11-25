@@ -85,6 +85,21 @@ impl RemoteBuild {
     pub fn version(&self) -> Option<Version> {
         crate::builds::version_from_name(&self.name)
     }
+
+    pub fn version_label(&self) -> String {
+        match self.version() {
+            Some(version) => format!("v{}", version.label()),
+            None => "GitHub".to_string(),
+        }
+    }
+
+    pub fn size_label(&self) -> String {
+        if self.size == 0 {
+            "GitHub".to_string()
+        } else {
+            format!("{:.1} MB", self.size as f64 / (1024.0 * 1024.0))
+        }
+    }
 }
 
 /// Aceita `usuário/repositório` ou a URL completa do GitHub.
@@ -174,17 +189,23 @@ pub fn parse_release(json: &str) -> Result<Release> {
             .unwrap_or_default()
             .to_string()
     };
+    let is_launcher_asset = |asset: &Value| {
+        asset_name(asset).to_ascii_lowercase().contains("launcher")
+    };
     let is_windows_zip = |asset: &Value| {
         let name = asset_name(asset).to_ascii_lowercase();
-        name.ends_with(".zip") && (name.contains("win") || name.contains("windows"))
+        !is_launcher_asset(asset)
+            && name.ends_with(".zip")
+            && (name.contains("win") || name.contains("windows"))
     };
     let chosen = assets
         .iter()
         .find(|asset| is_windows_zip(asset))
         .or_else(|| {
-            assets
-                .iter()
-                .find(|asset| asset_name(asset).to_ascii_lowercase().ends_with(".zip"))
+            assets.iter().find(|asset| {
+                !is_launcher_asset(asset)
+                    && asset_name(asset).to_ascii_lowercase().ends_with(".zip")
+            })
         });
     let (asset_name, asset_url) = match chosen {
         Some(asset) => (
