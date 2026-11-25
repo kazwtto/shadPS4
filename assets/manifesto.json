@@ -1,0 +1,1676 @@
+{
+  "title_id": "CUSA01623",
+  "app_version": "01.02",
+  "self_sha256": "6E72330E9092E5164049B865E5568F2D450904001A73FE0A2F4B39194C195B3C",
+  "self_length": 4580891,
+  "not_implemented": [
+    "Shadow quality/resolution",
+    "Reflection quality/resolution",
+    "Reduced intermediate effect resolutions",
+    "Skipping arbitrary real-time scripted cutscenes"
+  ],
+  "validation": "Static verification only; gameplay not run. XML parser does not enforce this manifest; use the supplied launcher.",
+  "version": "1.6",
+  "patches": [
+    {
+      "name": "Bug Fix - Texture Corruption Fix",
+      "lines": [
+        {
+          "address": "0x007cd918",
+          "value": "00000090",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Resolution Patch - 480p",
+      "lines": [
+        {
+          "address": "0x005f0c5b",
+          "value": "56030000",
+          "original": "80070000",
+          "file_offset": 2044459
+        },
+        {
+          "address": "0x005f0c63",
+          "value": "e0010000",
+          "original": "38040000",
+          "file_offset": 2044467
+        },
+        {
+          "address": "0x005f0c6c",
+          "value": "5603",
+          "original": "8007",
+          "file_offset": 2044476
+        },
+        {
+          "address": "0x005f0c73",
+          "value": "e001",
+          "original": "3804",
+          "file_offset": 2044483
+        },
+        {
+          "address": "0x005643e3",
+          "value": "e0010000",
+          "original": "38040000",
+          "file_offset": 1468851
+        },
+        {
+          "address": "0x005643f0",
+          "value": "56030000",
+          "original": "80070000",
+          "file_offset": 1468864
+        },
+        {
+          "address": "0x005ff889",
+          "value": "56030000",
+          "original": "80070000",
+          "file_offset": 2104921
+        },
+        {
+          "address": "0x005ff88f",
+          "value": "e0010000",
+          "original": "38040000",
+          "file_offset": 2104927
+        },
+        {
+          "address": "0x007cd918",
+          "value": "00000090",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Resolution Patch - 720p",
+      "lines": [
+        {
+          "address": "0x005f0c5b",
+          "value": "00050000",
+          "original": "80070000",
+          "file_offset": 2044459
+        },
+        {
+          "address": "0x005f0c63",
+          "value": "d0020000",
+          "original": "38040000",
+          "file_offset": 2044467
+        },
+        {
+          "address": "0x005f0c6c",
+          "value": "0005",
+          "original": "8007",
+          "file_offset": 2044476
+        },
+        {
+          "address": "0x005f0c73",
+          "value": "d002",
+          "original": "3804",
+          "file_offset": 2044483
+        },
+        {
+          "address": "0x005643e3",
+          "value": "d0020000",
+          "original": "38040000",
+          "file_offset": 1468851
+        },
+        {
+          "address": "0x005643f0",
+          "value": "00050000",
+          "original": "80070000",
+          "file_offset": 1468864
+        },
+        {
+          "address": "0x005ff889",
+          "value": "00050000",
+          "original": "80070000",
+          "file_offset": 2104921
+        },
+        {
+          "address": "0x005ff88f",
+          "value": "d0020000",
+          "original": "38040000",
+          "file_offset": 2104927
+        },
+        {
+          "address": "0x007cd918",
+          "value": "00000090",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Resolution Patch - 1440p",
+      "lines": [
+        {
+          "address": "0x005f0c5b",
+          "value": "000a0000",
+          "original": "80070000",
+          "file_offset": 2044459
+        },
+        {
+          "address": "0x005f0c63",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 2044467
+        },
+        {
+          "address": "0x005f0c6c",
+          "value": "000a",
+          "original": "8007",
+          "file_offset": 2044476
+        },
+        {
+          "address": "0x005f0c73",
+          "value": "a005",
+          "original": "3804",
+          "file_offset": 2044483
+        },
+        {
+          "address": "0x005643e3",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 1468851
+        },
+        {
+          "address": "0x005643f0",
+          "value": "000a0000",
+          "original": "80070000",
+          "file_offset": 1468864
+        },
+        {
+          "address": "0x005ff889",
+          "value": "000a0000",
+          "original": "80070000",
+          "file_offset": 2104921
+        },
+        {
+          "address": "0x005ff88f",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 2104927
+        },
+        {
+          "address": "0x007c46b4",
+          "value": "000a0000",
+          "original": "80070000",
+          "file_offset": 3949348
+        },
+        {
+          "address": "0x007c46b8",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 3949352
+        },
+        {
+          "address": "0x0056bb72",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 1499458
+        },
+        {
+          "address": "0x0060965d",
+          "value": "a0050000",
+          "original": "38040000",
+          "file_offset": 2145325
+        },
+        {
+          "address": "0x007f2a3c",
+          "value": "00050000",
+          "original": "c0030000",
+          "file_offset": 4138668
+        },
+        {
+          "address": "0x007f2a40",
+          "value": "d0020000",
+          "original": "1c020000",
+          "file_offset": 4138672
+        },
+        {
+          "address": "0x007cd918",
+          "value": "000000b0",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Resolution Patch - 1800p",
+      "lines": [
+        {
+          "address": "0x005f0c5b",
+          "value": "800c0000",
+          "original": "80070000",
+          "file_offset": 2044459
+        },
+        {
+          "address": "0x005f0c63",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 2044467
+        },
+        {
+          "address": "0x005f0c6c",
+          "value": "800c",
+          "original": "8007",
+          "file_offset": 2044476
+        },
+        {
+          "address": "0x005f0c73",
+          "value": "0807",
+          "original": "3804",
+          "file_offset": 2044483
+        },
+        {
+          "address": "0x005643e3",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 1468851
+        },
+        {
+          "address": "0x005643f0",
+          "value": "800c0000",
+          "original": "80070000",
+          "file_offset": 1468864
+        },
+        {
+          "address": "0x005ff889",
+          "value": "800c0000",
+          "original": "80070000",
+          "file_offset": 2104921
+        },
+        {
+          "address": "0x005ff88f",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 2104927
+        },
+        {
+          "address": "0x007c46b4",
+          "value": "800c0000",
+          "original": "80070000",
+          "file_offset": 3949348
+        },
+        {
+          "address": "0x007c46b8",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 3949352
+        },
+        {
+          "address": "0x0056bb72",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 1499458
+        },
+        {
+          "address": "0x0060965d",
+          "value": "08070000",
+          "original": "38040000",
+          "file_offset": 2145325
+        },
+        {
+          "address": "0x007f2a3c",
+          "value": "40060000",
+          "original": "c0030000",
+          "file_offset": 4138668
+        },
+        {
+          "address": "0x007f2a40",
+          "value": "84030000",
+          "original": "1c020000",
+          "file_offset": 4138672
+        },
+        {
+          "address": "0x007cd918",
+          "value": "000000d0",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Resolution Patch - 4K",
+      "lines": [
+        {
+          "address": "0x005f0c5b",
+          "value": "000f0000",
+          "original": "80070000",
+          "file_offset": 2044459
+        },
+        {
+          "address": "0x005f0c63",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 2044467
+        },
+        {
+          "address": "0x005f0c6c",
+          "value": "000f",
+          "original": "8007",
+          "file_offset": 2044476
+        },
+        {
+          "address": "0x005f0c73",
+          "value": "7008",
+          "original": "3804",
+          "file_offset": 2044483
+        },
+        {
+          "address": "0x005643e3",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 1468851
+        },
+        {
+          "address": "0x005643f0",
+          "value": "000f0000",
+          "original": "80070000",
+          "file_offset": 1468864
+        },
+        {
+          "address": "0x005ff889",
+          "value": "000f0000",
+          "original": "80070000",
+          "file_offset": 2104921
+        },
+        {
+          "address": "0x005ff88f",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 2104927
+        },
+        {
+          "address": "0x007c46b4",
+          "value": "000f0000",
+          "original": "80070000",
+          "file_offset": 3949348
+        },
+        {
+          "address": "0x007c46b8",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 3949352
+        },
+        {
+          "address": "0x0056bb72",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 1499458
+        },
+        {
+          "address": "0x0060965d",
+          "value": "70080000",
+          "original": "38040000",
+          "file_offset": 2145325
+        },
+        {
+          "address": "0x007f2a3c",
+          "value": "80070000",
+          "original": "c0030000",
+          "file_offset": 4138668
+        },
+        {
+          "address": "0x007f2a40",
+          "value": "38040000",
+          "original": "1c020000",
+          "file_offset": 4138672
+        },
+        {
+          "address": "0x007cd918",
+          "value": "000000f0",
+          "original": "00000050",
+          "file_offset": 3986824
+        }
+      ]
+    },
+    {
+      "name": "Frame Rate Patch - 120 FPS",
+      "lines": [
+        {
+          "address": "0x0048ff0a",
+          "value": "488d05e7c22600",
+          "original": "488d056fdd3300",
+          "file_offset": 599258
+        },
+        {
+          "address": "0x0075dd04",
+          "value": "0000f042",
+          "original": "8fc26f42",
+          "file_offset": 3539668
+        }
+      ]
+    },
+    {
+      "name": "Skip Intro",
+      "lines": [
+        {
+          "address": "0x00584940",
+          "value": "eb34",
+          "original": "7534",
+          "file_offset": 1601296
+        },
+        {
+          "address": "0x004c8430",
+          "value": "c7051e0e9b0101000000b801000000c3",
+          "original": "488d05a55b38008b00c3660f1f440000",
+          "file_offset": 829952
+        },
+        {
+          "address": "0x0041b36a",
+          "value": "e8216f1f00",
+          "original": "e811990900",
+          "file_offset": 121146
+        },
+        {
+          "address": "0x00612290",
+          "value": "c705be6f860101000000e9e129eaff",
+          "original": "909090909090909090909090909090",
+          "file_offset": 2181216
+        }
+      ]
+    },
+    {
+      "name": "Skip Any Video With X Button",
+      "lines": [
+        {
+          "address": "0x0041b2a3",
+          "value": "7542",
+          "original": "754a",
+          "file_offset": 120947
+        },
+        {
+          "address": "0x0041b2e7",
+          "value": "b901000000909090",
+          "original": "85c00f95c00fb6c8",
+          "file_offset": 121015
+        }
+      ]
+    },
+    {
+      "name": "Astra v0.4 - Disable Color Grading",
+      "lines": [
+        {
+          "address": "0x007cdb64",
+          "value": "00000000",
+          "original": "01000000",
+          "file_offset": 3987412
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.5 - Disable Layered Fog",
+      "lines": [
+        {
+          "address": "0x00607a8b",
+          "value": "31c0",
+          "original": "85c0",
+          "file_offset": 2138203
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.5 - Disable Depth of Field",
+      "lines": [
+        {
+          "address": "0x00567548",
+          "value": "30c0",
+          "original": "84c0",
+          "file_offset": 1481496
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.9 - Disable Bloom - producer state",
+      "lines": [
+        {
+          "address": "0x00561ca4",
+          "original": "0f95c2",
+          "value": "31d290",
+          "file_offset": 1458804
+        },
+        {
+          "address": "0x00561ca7",
+          "original": "0f958369040000",
+          "value": "c6836904000000",
+          "file_offset": 1458807
+        },
+        {
+          "address": "0x00561cef",
+          "original": "888369040000",
+          "value": "889369040000",
+          "file_offset": 1458879
+        },
+        {
+          "address": "0x00561d2c",
+          "original": "c6836904000001",
+          "value": "c6836904000000",
+          "file_offset": 1458940
+        }
+      ],
+      "origin": "L02_activation_state_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.5 - Disable Motion Blur - native inactive",
+      "lines": [
+        {
+          "address": "0x0056af5c",
+          "value": "31d2",
+          "original": "84d2",
+          "file_offset": 1496364
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.5 - Disable Camera Sway",
+      "lines": [
+        {
+          "address": "0x00514274",
+          "value": "31c0",
+          "original": "85c0",
+          "file_offset": 1140804
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.7 - Disable Dynamic Shadows - native inactive",
+      "lines": [
+        {
+          "address": "0x00571a26",
+          "value": "31c0",
+          "original": "85c0",
+          "file_offset": 1523702
+        }
+      ],
+      "origin": "local_binary_analysis",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v0.8 - Job Queue Contention PAUSE",
+      "lines": [
+        {
+          "address": "0x005a5907",
+          "original": "660f1f840000000000",
+          "value": "eb07f390eb03909090",
+          "file_offset": 1736407
+        },
+        {
+          "address": "0x005a591e",
+          "original": "75f0",
+          "value": "75e9",
+          "file_offset": 1736430
+        },
+        {
+          "address": "0x005a59c2",
+          "original": "66666666662e0f1f840000000000",
+          "value": "eb0cf390eb089090909090909090",
+          "file_offset": 1736594
+        },
+        {
+          "address": "0x005a59e3",
+          "original": "75eb",
+          "value": "75df",
+          "file_offset": 1736627
+        },
+        {
+          "address": "0x005a5d68",
+          "original": "0f1f840000000000",
+          "value": "eb06f390eb029090",
+          "file_offset": 1737528
+        },
+        {
+          "address": "0x005a5d83",
+          "original": "75eb",
+          "value": "75e5",
+          "file_offset": 1737555
+        }
+      ],
+      "origin": "local_binary_analysis_L01",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v1.0 - Shadow range 75 percent",
+      "lines": [
+        {
+          "address": "0x007bd500",
+          "value": "c57828dec5c2593d64000000c5e2591d5c000000c5d2592d54000000c4c17a10b680020000c5c8573553000000c5c25ffec5e25fdec5d25feec4c17a10b690020000c5c8573536000000c5c25dfec5e25ddec5d25deec57829de488d054fd90a00e97a46dbff909090909090909090900000403f90909090909090909090909000000080000000800000008000000080",
+          "original": "",
+          "file_offset": 0,
+          "segment_padding": true
+        },
+        {
+          "address": "0x00571bd9",
+          "value": "e922b924009090",
+          "original": "488d05d0922f00",
+          "file_offset": 1524137
+        }
+      ],
+      "experimental": true,
+      "origin": "L04_local_publisher_analysis",
+      "gameplay_validated": false,
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3"
+    },
+    {
+      "name": "Astra v1.0 - Shadow range 50 percent",
+      "lines": [
+        {
+          "address": "0x007bd500",
+          "value": "c57828dec5c2593d64000000c5e2591d5c000000c5d2592d54000000c4c17a10b680020000c5c8573553000000c5c25ffec5e25fdec5d25feec4c17a10b690020000c5c8573536000000c5c25dfec5e25ddec5d25deec57829de488d054fd90a00e97a46dbff909090909090909090900000003f90909090909090909090909000000080000000800000008000000080",
+          "original": "",
+          "file_offset": 0,
+          "segment_padding": true
+        },
+        {
+          "address": "0x00571bd9",
+          "value": "e922b924009090",
+          "original": "488d05d0922f00",
+          "file_offset": 1524137
+        }
+      ],
+      "experimental": true,
+      "origin": "L04_local_publisher_analysis",
+      "gameplay_validated": false,
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3"
+    },
+    {
+      "name": "Astra v1.1 - Particles soft OFF",
+      "lines": [
+        {
+          "address": "0x0059d9af",
+          "original": "0f95c0",
+          "value": "31c090",
+          "file_offset": 1703807
+        }
+      ],
+      "experimental": true,
+      "origin": "L05_local_native_material_selector",
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v1.1 - Particles distortion OFF",
+      "lines": [
+        {
+          "address": "0x0059d713",
+          "original": "c5f82e00",
+          "value": "c5f82ec0",
+          "file_offset": 1703139
+        }
+      ],
+      "experimental": true,
+      "origin": "L05_local_native_material_selector",
+      "gameplay_validated": false
+    },
+    {
+      "name": "Astra v1.2 - Automatic particle emission 75 percent",
+      "lines": [
+        {
+          "address": "0x00591ae5",
+          "original": "c4c17a598c24c4010000",
+          "value": "e916bb22009090909090",
+          "file_offset": 1654965
+        },
+        {
+          "address": "0x007bd600",
+          "original": "",
+          "file_offset": 0,
+          "value": "c4c17a598c24c4010000c5f2590d0a000000e9d844ddff90909090900000403f",
+          "segment_padding": true
+        }
+      ],
+      "experimental": true,
+      "origin": "L07_native_visual_emitter_rate",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "scope": "global_automatic_visual_emitters",
+      "decorative_only": false
+    },
+    {
+      "name": "Astra v1.2 - Automatic particle emission 50 percent",
+      "lines": [
+        {
+          "address": "0x00591ae5",
+          "original": "c4c17a598c24c4010000",
+          "value": "e916bb22009090909090",
+          "file_offset": 1654965
+        },
+        {
+          "address": "0x007bd600",
+          "original": "",
+          "file_offset": 0,
+          "value": "c4c17a598c24c4010000c5f2590d0a000000e9d844ddff90909090900000003f",
+          "segment_padding": true
+        }
+      ],
+      "experimental": true,
+      "origin": "L07_native_visual_emitter_rate",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "scope": "global_automatic_visual_emitters",
+      "decorative_only": false
+    },
+    {
+      "name": "Astra v1.3 - SSAO OFF - native preparation retained",
+      "lines": [
+        {
+          "address": "0x0060b6a8",
+          "original": "498b442440",
+          "value": "e9d31f1b00",
+          "file_offset": 2153592
+        },
+        {
+          "address": "0x007bd680",
+          "original": "",
+          "file_offset": 0,
+          "value": "498b3fc74774ffffffffbe0f000000e8bc5edeffc68598fdffffffc68599fdffffff498b3f31d24c89f6e851cfdeffc685a8fdffff00c685aafdffff08c685acfdffff008a85b3fdffff24c30c208885b3fdffff498b3f31d2488db598fdffffe81bcfdeff4d89e7498b47384c8b7008e982e8e4ff",
+          "segment_padding": true
+        }
+      ],
+      "experimental": true,
+      "origin": "L08_native_ssao_pass_graph",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "native_draws_before": 5,
+      "native_draws_after": 1,
+      "preparation_depth_pass_retained": true
+    },
+    {
+      "name": "Astra v1.4 - Native half-resolution particle buffers",
+      "lines": [
+        {
+          "address": "0x00598e08",
+          "original": "45893e",
+          "file_offset": 1684440,
+          "value": "eb4b90"
+        },
+        {
+          "address": "0x00598e55",
+          "original": "66662e0f1f840000000000",
+          "file_offset": 1684517,
+          "value": "e9e6482200909090909090"
+        },
+        {
+          "address": "0x007bd740",
+          "original": "",
+          "file_offset": 0,
+          "value": "4183ff01770641bf0100000045893ee9b7b6ddff",
+          "segment_padding": true
+        }
+      ],
+      "experimental": true,
+      "origin": "L09_native_adaptive_particle_buffer_policy",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "preserves_special_modes_and_guards": true,
+      "scope": "native_mode_1_intermediate_particle_buffers"
+    },
+    {
+      "name": "Astra v1.5 - Exact SIMD geometry weights",
+      "lines": [
+        {
+          "address": "0x5c094f",
+          "file_offset": 1847071,
+          "original": "440fb650f6440fb648f7438d0c11440fb658f84401d9440fb678f94401f9c5fa2ac1c4c17a2acac5725ed0c4c17a2ad1c56a5ed8c4c17a2adbc5625ec8c4c17a2ae7c55a5ec0",
+          "value": "c4e2793140f6c5f970c84ec5f1fec8c5f970d1b1c5f1fecac5f85bc0c5f85bc9c5f85ec1c57970d000c57970d855c57970c8aac57970c0ff9090909090909090909090909090"
+        }
+      ],
+      "experimental": true,
+      "origin": "L10_native_exact_packed_skin_weight_division",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "quality_reduction": false,
+      "scope": "CPU geometry preparation; four exact skin-weight divisions packed; no LOD cutoff",
+      "native_differential_cases": 2304
+    },
+    {
+      "name": "Astra v1.6 - Authored empty-far LOD threshold 75 percent",
+      "lines": [
+        {
+          "address": "0x7bd800",
+          "file_offset": 0,
+          "original": "",
+          "value": "c4a17a102419509c41807d020275364585f6753142813c190000c84275276642837c190400741e496345084c01e881380000004f750f66837804007508c5da59250b0000009d58e9fd0de0ff909090900000403f",
+          "segment_padding": true
+        },
+        {
+          "address": "0x5be643",
+          "file_offset": 1838099,
+          "original": "c4a17a102419",
+          "value": "e9b8f11f0090"
+        }
+      ],
+      "experimental": true,
+      "origin": "L11_native_authored_empty_far_lod",
+      "required_executable_sha256": "52EB9CEC25404596E15B8B547C408A62F5FA27EA38779B921A6F350A9D6B3AF3",
+      "gameplay_validated": false,
+      "quality_tradeoff": true,
+      "decorative_only_classification_confirmed": false,
+      "native_guards_and_fade_retained": true,
+      "scope": "Only first threshold 100.0 of exactly two authored LODs ending in an empty 2^31 sentinel stage",
+      "native_constructor_cases": 1152,
+      "native_predicate_cases": 24,
+      "native_fade_cases": 12
+    }
+  ],
+  "profiles": {
+    "SemPatches": {
+      "file": "SemPatches.xml",
+      "sha256": "EBE509F0E1B95141D946579DCBD8321C8E9005CCD19F0F7DE6BA7DB4C2D5AE39",
+      "enabled": [],
+      "vblank": 60
+    },
+    "Base60": {
+      "file": "Base60.xml",
+      "sha256": "AF0D199B1E66D06F8E0ABF2D93EF4952C71900FEBD64098A2F40CFF2A1BC261D",
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button"
+      ],
+      "vblank": 60
+    },
+    "Originais120": {
+      "file": "Originais120.xml",
+      "sha256": "AF3F9784E136BD9DEE6478D154B6D0FE9C117AC729EC04C963C5ED97AF65974C",
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button"
+      ],
+      "vblank": 120
+    },
+    "ReferenciaObservada": {
+      "file": "ReferenciaObservada.xml",
+      "sha256": "AF3F9784E136BD9DEE6478D154B6D0FE9C117AC729EC04C963C5ED97AF65974C",
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button"
+      ],
+      "vblank": 60,
+      "vblank_override": 60
+    },
+    "TesteColorGradingOff60": {
+      "file": "TesteColorGradingOff60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.4 - Disable Color Grading"
+      ],
+      "sha256": "D147D54930AA30B24A06A621E81F5A320EBC0C7D662F7FF8ADC49731495CD571"
+    },
+    "TesteColorGradingOff120": {
+      "file": "TesteColorGradingOff120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.4 - Disable Color Grading"
+      ],
+      "sha256": "2ADD9D6AA9ED6A62FE2ABA7DB970857C170FE52A8A62587750B9EFF29FE5F202"
+    },
+    "Teste_layered_fog_off_60": {
+      "file": "Teste_layered_fog_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Layered Fog"
+      ],
+      "sha256": "BAAD7AEF4912C0DC4E26BF87A1F73BA3EF2424E89FC8DDFE5F3B157046C90245"
+    },
+    "Teste_layered_fog_off_120": {
+      "file": "Teste_layered_fog_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Layered Fog"
+      ],
+      "sha256": "3E1DA4646B518589F90F7779BDB666C5F51C2458B41193EBC3B9934CF60DAF5B"
+    },
+    "Teste_dof_native_off_60": {
+      "file": "Teste_dof_native_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Depth of Field"
+      ],
+      "sha256": "B8D481F96D7E58CC5F368EAE4E5C021B26C6EA43DF9B958C524A38993EA258F9"
+    },
+    "Teste_dof_native_off_120": {
+      "file": "Teste_dof_native_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Depth of Field"
+      ],
+      "sha256": "38E64744799C819CED5569F56F71AD763FCD8763388E2CF3275AC5A2C73D557B"
+    },
+    "Teste_bloom_native_off_60": {
+      "file": "Teste_bloom_native_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.9 - Disable Bloom - producer state"
+      ],
+      "sha256": "C8425DFE4A3A6FB7201CE4ECA8AE9544BEA9011B99F3E93882ED9FFC95A03600"
+    },
+    "Teste_bloom_native_off_120": {
+      "file": "Teste_bloom_native_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.9 - Disable Bloom - producer state"
+      ],
+      "sha256": "06345D1B2080322C4D252E52893949AB19AE8E6BB1E35C0D60D312D289DE3272"
+    },
+    "Teste_motion_blur_native_off_60": {
+      "file": "Teste_motion_blur_native_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Motion Blur - native inactive"
+      ],
+      "sha256": "362D61D4267C19A8FEDDF8DC2517BD750B3194F8EB088394DA1C551C68F5FB5F"
+    },
+    "Teste_motion_blur_native_off_120": {
+      "file": "Teste_motion_blur_native_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Motion Blur - native inactive"
+      ],
+      "sha256": "507F97518B642D5DC92BEC35DCE0802A8DF9E86F5436531E534110CE68FFBB7F"
+    },
+    "Teste_camera_sway_off_60": {
+      "file": "Teste_camera_sway_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Camera Sway"
+      ],
+      "sha256": "2B7FA3AE4ABA31822C72B166AA0A74A64DE44094E1892FF0DE1B0A9E12E215EA"
+    },
+    "Teste_camera_sway_off_120": {
+      "file": "Teste_camera_sway_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.5 - Disable Camera Sway"
+      ],
+      "sha256": "DA761E39E0A1FF915EDC1C0E83231A8AC355051E5900A393CD5D66B934DBE32F"
+    },
+    "Teste_dynamic_shadows_native_off_60": {
+      "file": "Teste_dynamic_shadows_native_off_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.7 - Disable Dynamic Shadows - native inactive"
+      ],
+      "sha256": "29D073735576F5233D504A62798F89FF083E28971AF657B8F6AB4E659C564AE0"
+    },
+    "Teste_dynamic_shadows_native_off_120": {
+      "file": "Teste_dynamic_shadows_native_off_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.7 - Disable Dynamic Shadows - native inactive"
+      ],
+      "sha256": "55E3DD30BCAFDB40B71D70D2C9AD8DDDFB28D07FB503BBA305CD1F914FD7B729"
+    },
+    "Teste_CPU_Jobs_60": {
+      "file": "Teste_CPU_Jobs_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.8 - Job Queue Contention PAUSE"
+      ],
+      "sha256": "0F85380D1DACC64A98BFAB1347D4A025E4BD58314486CAC0BD132DA946D1E914"
+    },
+    "Teste_CPU_Jobs_120": {
+      "file": "Teste_CPU_Jobs_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v0.8 - Job Queue Contention PAUSE"
+      ],
+      "sha256": "D7A9FDA3C2CCDA2D25471029F67B01F449D1D3D934E0CE9C0C43DF3B429E1F7D"
+    },
+    "Teste_Sombras75_60": {
+      "file": "Teste_Sombras75_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.0 - Shadow range 75 percent"
+      ],
+      "sha256": "7E275DDDCF482528C58ADDF4380262A2986E4CBE3D460E401960993A279E637E"
+    },
+    "Teste_Sombras75_120": {
+      "file": "Teste_Sombras75_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.0 - Shadow range 75 percent"
+      ],
+      "sha256": "2D620A818AEBD238AC8C37336B29A571A6160EAC2979FAE38C7AC2B37293A8BA"
+    },
+    "Teste_Sombras50_60": {
+      "file": "Teste_Sombras50_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.0 - Shadow range 50 percent"
+      ],
+      "sha256": "852138D5AA1A22735E065ED53EC49CDB2BD465509C7C012F89E06DA5AE913C1F"
+    },
+    "Teste_Sombras50_120": {
+      "file": "Teste_Sombras50_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.0 - Shadow range 50 percent"
+      ],
+      "sha256": "34C08F73492A5631EEC4A4783EB6F50DBE3EA6E4F00BA8ED5E129DDB977D6E36"
+    },
+    "Teste_Particulas_Soft_OFF_60": {
+      "file": "Teste_Particulas_Soft_OFF_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.1 - Particles soft OFF"
+      ],
+      "sha256": "8E2CCA023E9A976D1383CD9FE2704C27D5AF4A22FFAC65C77D1B6FE2CF77F327"
+    },
+    "Teste_Particulas_Soft_OFF_120": {
+      "file": "Teste_Particulas_Soft_OFF_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.1 - Particles soft OFF"
+      ],
+      "sha256": "DEBD2A0771B0AC7759241169E995228EF2231FEB30217E882FF90FDEDE25A558"
+    },
+    "Teste_Particulas_Distorcao_OFF_60": {
+      "file": "Teste_Particulas_Distorcao_OFF_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.1 - Particles distortion OFF"
+      ],
+      "sha256": "57C09727B3D4B54D47CAF08694B23C32C703A43268AD9DA5146C9899EA5E8449"
+    },
+    "Teste_Particulas_Distorcao_OFF_120": {
+      "file": "Teste_Particulas_Distorcao_OFF_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.1 - Particles distortion OFF"
+      ],
+      "sha256": "7079B1AFE7E5D279CE71ECA5B370ECCAA88F571D237AF83BE6712E9B8EA300D4"
+    },
+    "Teste_Emissao75_60": {
+      "file": "Teste_Emissao75_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.2 - Automatic particle emission 75 percent"
+      ],
+      "sha256": "680FC5645C6B3FA02DA2B538E87C288C50DB90CD0268C7141081CD27F331C1A4"
+    },
+    "Teste_Emissao75_120": {
+      "file": "Teste_Emissao75_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.2 - Automatic particle emission 75 percent"
+      ],
+      "sha256": "5E84887AFD8BF0CFC77DB1B04D6859EBC60CA6BDC7F0B8E71A4310C1FF6668D1"
+    },
+    "Teste_Emissao50_60": {
+      "file": "Teste_Emissao50_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.2 - Automatic particle emission 50 percent"
+      ],
+      "sha256": "57DDEDC7D193F82BAB58AC9B44F6E7341A0B035776AC55F145A7BA435719ED11"
+    },
+    "Teste_Emissao50_120": {
+      "file": "Teste_Emissao50_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.2 - Automatic particle emission 50 percent"
+      ],
+      "sha256": "DA111D927C8277CF5EF0123D861A28B50C107F33FCF967435C4F2297C003E4FC"
+    },
+    "Teste_SSAO_OFF_60": {
+      "file": "Teste_SSAO_OFF_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.3 - SSAO OFF - native preparation retained"
+      ],
+      "sha256": "570E02F2FB98E97C8A95352FDFCCDC01EA053F652B87C2B81ACD056EEA802FD9"
+    },
+    "Teste_SSAO_OFF_120": {
+      "file": "Teste_SSAO_OFF_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.3 - SSAO OFF - native preparation retained"
+      ],
+      "sha256": "EE438E5FB760AC45BFC7448A62117AF2DB332E93BE6B3F11CD6B8122E556D0FC"
+    },
+    "Teste_Buffers_Particulas_Half_60": {
+      "file": "Teste_Buffers_Particulas_Half_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.4 - Native half-resolution particle buffers"
+      ],
+      "sha256": "486D5872786EAE886634C01AEBA531C4EF8C8876FF89A318BF0A82C934D755BF"
+    },
+    "Teste_Buffers_Particulas_Half_120": {
+      "file": "Teste_Buffers_Particulas_Half_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.4 - Native half-resolution particle buffers"
+      ],
+      "sha256": "8A41282EE3F3F0824EB293F7B95EB7F2635A867024BC1870E9CD48069145E80F"
+    },
+    "Teste_Geometria_SIMD_60": {
+      "file": "Teste_Geometria_SIMD_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.5 - Exact SIMD geometry weights"
+      ],
+      "sha256": "D01DF9CF38292DCEA7E53106C9513F4C9CC47998EDCDDE50DB856A2C15ECDCA8"
+    },
+    "Teste_Geometria_SIMD_120": {
+      "file": "Teste_Geometria_SIMD_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.5 - Exact SIMD geometry weights"
+      ],
+      "sha256": "0FA75D9A7D5EB8D8AA328F17E58D0A6B45DD81B7BA71A507F4E889CF84493F44"
+    },
+    "Teste_LOD_Nativo75_60": {
+      "file": "Teste_LOD_Nativo75_60.xml",
+      "vblank": 60,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.6 - Authored empty-far LOD threshold 75 percent"
+      ],
+      "sha256": "B79944D3AD17200A384C5AF6D94FB1E3654205C76963794C06C1EF527C866A87"
+    },
+    "Teste_LOD_Nativo75_120": {
+      "file": "Teste_LOD_Nativo75_120.xml",
+      "vblank": 120,
+      "enabled": [
+        "Resolution Patch - 720p",
+        "Frame Rate Patch - 120 FPS",
+        "Skip Intro",
+        "Skip Any Video With X Button",
+        "Astra v1.6 - Authored empty-far LOD threshold 75 percent"
+      ],
+      "sha256": "819A10E4ECAB398E0864BB61678A2DE88E9A0217870B86E8BF8B5144C98A6492"
+    }
+  },
+  "provenance": {
+    "url": "https://github.com/cuesta4/shadPS4/releases/tag/shadps4-eltutz-v3",
+    "source_sha256": "800F142A3338375AFF132472CA47F13EB28CD932653BB5BC09C585211D96AB0E"
+  },
+  "experimental_validation": {
+    "context_address": "0x00565db7",
+    "original": "488d05a67d26008b0085c00f84ae020000",
+    "native_disabled_target": "0x00566076",
+    "control_address": "0x007cdb64",
+    "control_width": 4,
+    "gameplay_validated": false,
+    "fps_measured": false
+  },
+  "candidate_validations": [
+    {
+      "id": "layered_fog_off",
+      "context_address": "0x607a86",
+      "context": "e865660d0085c00f84fd000000",
+      "reason": "Forces inactive after evaluation; native branch clears fog constants, pointer and state."
+    },
+    {
+      "id": "dof_native_off",
+      "context_address": "0x567548",
+      "context": "84c07418c5f857c0",
+      "reason": "Forces inactive after parameter/history updates; native epilogue, no DOF job."
+    },
+    {
+      "id": "bloom_native_off",
+      "context_address": "0x561efb",
+      "context": "80bb69040000004889da0f84df070000",
+      "reason": "Forces native disabled render path; clears global bloom state before common epilogue. Partial bloom only.",
+      "superseded_by": "L02 / v0.9"
+    },
+    {
+      "id": "motion_blur_native_off",
+      "context_address": "0x56af5c",
+      "context": "84d20f8468010000",
+      "reason": "Forces inactive after history updates, keeping globals reset. Different from rejected zero-intensity v0.3."
+    },
+    {
+      "id": "camera_sway_off",
+      "context_address": "0x51426f",
+      "context": "e8ac6a1a0085c07540",
+      "reason": "Forces native inactive result after camera evaluation, preserving neutral transform writes. No FPS claim."
+    }
+  ],
+  "shadow_validation": {
+    "context_address": "0x571a1e",
+    "original_context": "4889dfe83a68150085c00f8448020000",
+    "native_inactive_branch": "0x00571c76",
+    "state": "0x0086aeb0",
+    "guard_contexts": [
+      {
+        "address": "0x571c76",
+        "bytes": "c4c17a108680020000c5f85705b9571e00488d0522922f00c5fa11400cc5fa114010c5fa1140145b415e5dc3"
+      },
+      {
+        "address": "0x571cb0",
+        "bytes": "488d05f9912f00488b482848894e28488b482048894e20"
+      },
+      {
+        "address": "0x5b73a7",
+        "bytes": "e804a9fbff488d052dd44001488b78308bb380010000488b93900100004c89f94d89f0e80199ffff"
+      },
+      {
+        "address": "0x5b0d90",
+        "bytes": "c5fa10430cc5f8570593a51a00488b87a0410200c5fa108880020000c5f82ec80f86911a0000"
+      }
+    ],
+    "gameplay_validated": false
+  },
+  "job_queue_validation": {
+    "experiment": "L01",
+    "native_cases": 48,
+    "total_increments": 4500000,
+    "gameplay_validated": false,
+    "fps_measured": false,
+    "lines": 6,
+    "sites": 3,
+    "original_game_untouched": true
+  },
+  "bloom_validation": {
+    "experiment": "L02",
+    "cases": 128,
+    "old_render_gate_restored": true,
+    "activation_state_consistency_checked": true,
+    "overglow_visual_fix_confirmed": false,
+    "gameplay_validated": false
+  },
+  "shadow_range_validation": {
+    "experiment": "L04",
+    "native_cases": 800,
+    "quality_tradeoff": true,
+    "gameplay_validated": false,
+    "fps_measured": false
+  },
+  "particle_validation": {
+    "experiment": "L05",
+    "native_comparisons": 5120,
+    "whole_function": true,
+    "quality_tradeoff": true,
+    "gameplay_validated": false,
+    "fps_measured": false
+  },
+  "density_validation": {
+    "experiment": "L07",
+    "whole_function": true,
+    "native_comparisons": 960,
+    "long_runs": [
+      {
+        "factor": 0.75,
+        "rate_per_second": 0.3,
+        "frames": 1200,
+        "emitted": 4
+      },
+      {
+        "factor": 0.75,
+        "rate_per_second": 3.0,
+        "frames": 1200,
+        "emitted": 45
+      },
+      {
+        "factor": 0.75,
+        "rate_per_second": 60.0,
+        "frames": 1200,
+        "emitted": 900
+      },
+      {
+        "factor": 0.75,
+        "rate_per_second": 480.0,
+        "frames": 1200,
+        "emitted": 7200
+      },
+      {
+        "factor": 0.5,
+        "rate_per_second": 0.3,
+        "frames": 1200,
+        "emitted": 2
+      },
+      {
+        "factor": 0.5,
+        "rate_per_second": 3.0,
+        "frames": 1200,
+        "emitted": 29
+      },
+      {
+        "factor": 0.5,
+        "rate_per_second": 60.0,
+        "frames": 1200,
+        "emitted": 600
+      },
+      {
+        "factor": 0.5,
+        "rate_per_second": 480.0,
+        "frames": 1200,
+        "emitted": 4800
+      }
+    ],
+    "new_option_scope": "global_automatic_visual_emitters",
+    "decorative_classification_confirmed": false,
+    "gameplay_validated": false,
+    "fps_measured": false,
+    "quality_tradeoff": true,
+    "limits": [
+      "Allocator returns null; curve and reset calls count only.",
+      "RNG and distance results are explicit synthetic inputs.",
+      "No renderer, GPU, combat, save or respawn execution.",
+      "Manual emission paths bypassing 0x591A20 remain unchanged.",
+      "Not a quality-preserving optimization or a duplication fix."
+    ]
+  },
+  "ssao_validation": {
+    "experiment": "L08",
+    "native_cases": 12,
+    "phase_bypass_cases": 36,
+    "whole_render_function": true,
+    "draws_before": 5,
+    "draws_after": 1,
+    "gameplay_validated": false,
+    "fps_measured": false,
+    "quality_tradeoff": true,
+    "limits": [
+      "Graphics helpers are argument-recording stubs, not a GPU.",
+      "No pixel comparison, scene traversal or actual depth image test.",
+      "One native preparation/depth pass intentionally remains.",
+      "Shader binding remains at program 0; following draws must bind their own programs as usual."
+    ]
+  },
+  "halfres_validation": {
+    "experiment": "L09",
+    "publisher_cases": 864,
+    "native_selection_cases": 160,
+    "dimension_cases": [
+      {
+        "source": [
+          1920,
+          1080
+        ],
+        "targets": {
+          "11": [
+            1920,
+            1080
+          ],
+          "12": [
+            1920,
+            1080
+          ],
+          "13": [
+            960,
+            540
+          ],
+          "14": [
+            960,
+            540
+          ],
+          "17": [
+            960,
+            540
+          ]
+        }
+      },
+      {
+        "source": [
+          1280,
+          720
+        ],
+        "targets": {
+          "11": [
+            1280,
+            720
+          ],
+          "12": [
+            1280,
+            720
+          ],
+          "13": [
+            640,
+            360
+          ],
+          "14": [
+            640,
+            360
+          ],
+          "17": [
+            640,
+            360
+          ]
+        }
+      },
+      {
+        "source": [
+          960,
+          540
+        ],
+        "targets": {
+          "11": [
+            960,
+            540
+          ],
+          "12": [
+            960,
+            540
+          ],
+          "13": [
+            480,
+            270
+          ],
+          "14": [
+            480,
+            270
+          ],
+          "17": [
+            480,
+            270
+          ]
+        }
+      },
+      {
+        "source": [
+          640,
+          360
+        ],
+        "targets": {
+          "11": [
+            640,
+            360
+          ],
+          "12": [
+            640,
+            360
+          ],
+          "13": [
+            320,
+            180
+          ],
+          "14": [
+            320,
+            180
+          ],
+          "17": [
+            320,
+            180
+          ]
+        }
+      }
+    ],
+    "native_constructor_and_compositor_gate": true,
+    "scope": "native_mode_1_intermediate_particle_buffers",
+    "quality_tradeoff": true,
+    "gameplay_validated": false,
+    "fps_measured": false,
+    "limits": [
+      "GPU timestamp/get-time input is synthetic; no GPU execution.",
+      "Native modes other than ordinary 0/1 and all early guards remain unchanged.",
+      "No pixel, depth-edge, combat or respawn validation.",
+      "No change to emission v1.2 or SSAO v1.3.",
+      "Hook preserves alternate branch entry at 0x598E0B using an alignment-gap bridge.",
+      "Native dimension initializer fragment, not allocator/tiling execution."
+    ]
+  },
+  "geometry_weights_validation": {
+    "experiment": "L10_exact_simd_bounds",
+    "whole_function_cases": 2048,
+    "special_float_cases": 256,
+    "mxcsr_combinations": 32,
+    "scope": "CPU geometry preparation; four exact skin-weight divisions packed; no LOD cutoff",
+    "byte_identical_observed": [
+      "output and allocation chains",
+      "matrix scratch",
+      "helper call counts",
+      "MXCSR exception flags"
+    ],
+    "gameplay_validated": false,
+    "fps_measured": false
+  },
+  "native_lod_validation": {
+    "experiment": "L11_native_empty_far_lod_75",
+    "constructor_cases": 1152,
+    "native_predicate_cases": 24,
+    "native_fade_cases": 12,
+    "scope": "Only first threshold 100.0 of exactly two authored LODs ending in an empty 2^31 sentinel stage",
+    "quality_tradeoff": true,
+    "decorative_only_classification_confirmed": false,
+    "gameplay_validated": false,
+    "fps_measured": false
+  }
+}

@@ -1,0 +1,95 @@
+import { Theme } from "theme.slint";
+import { ComboBoxBase } from "combobox-base.slint";
+import { ScrollView } from "std-widgets.slint";
+
+// Retain Slint's keyboard/value semantics; own the visuals and motion preference.
+export component FxComboBox inherits Rectangle {
+    in property <[string]> model <=> base.model;
+    in property <bool> enabled <=> base.enabled;
+    in-out property <int> current-index <=> base.current-index;
+    in-out property <string> current-value <=> base.current-value;
+    callback selected(string);
+    min-width: 160px; min-height: 32px; max-height: 32px;
+    horizontal-stretch: 1; vertical-stretch: 0;
+    forward-focus: base;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: base.has-focus && Theme.keyboard-navigation ? Theme.text : #FFFFFF18;
+    background: !root.enabled ? #FFFFFF05 : base.pressed ? #FFFFFF08 : base.has-hover ? #FFFFFF18 : #FFFFFF0D;
+    animate background, border-color {
+        duration: Theme.animations-enabled ? Theme.motion-quick : 0ms;
+        easing: ease-out;
+    }
+    Text {
+        x: 12px; width: parent.width - 38px; height: parent.height;
+        text: root.current-value; vertical-alignment: center; overflow: elide; font-size: 12px;
+        color: root.enabled ? Theme.text : Theme.text-disabled;
+        animate color { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+    }
+    Image {
+        x: root.width - 26px; y: (root.height - 16px) / 2; width: 16px; height: 16px;
+        source: @image-url("icons/chevron-down.svg");
+        colorize: root.enabled ? Theme.text-secondary : Theme.text-disabled;
+    }
+    // O menu abre baixo e sobe 6 px enquanto aparece.
+    private property <float> popup-reveal: 0;
+    private property <bool> popup-opening: false;
+    animate popup-reveal {
+        duration: Theme.animations-enabled ? Theme.motion-base : 0ms;
+        easing: cubic-bezier(0.2, 0, 0, 1);
+    }
+    Timer {
+        interval: 16ms;
+        running: root.popup-opening;
+        triggered => { root.popup-opening = false; root.popup-reveal = 1; }
+    }
+    base := ComboBoxBase {
+        width: 100%; height: 100%;
+        selected(value) => { root.selected(value); }
+        show-popup => { root.popup-reveal = 0; popup.show(); root.popup-opening = true; }
+        close-popup => { root.popup-reveal = 0; root.popup-opening = false; popup.close(); }
+    }
+    accessible-role: combobox;
+    accessible-enabled: root.enabled;
+    accessible-expandable: true;
+    accessible-expanded: base.popup-has-focus;
+    accessible-value <=> root.current-value;
+    accessible-action-expand => { if root.enabled { base.show-popup(); } }
+    popup := PopupWindow {
+        x: 0px; y: 34px;
+        width: root.width;
+        height: min(7, root.model.length) * 34px + 8px;
+        close-policy: close-on-click-outside;
+        forward-focus: keys;
+        keys := FocusScope {
+            focus-changed-event => { base.popup-has-focus = self.has-focus; }
+            key-pressed(event) => { return base.popup-key-handler(event); }
+            Rectangle {
+                y: (1 - root.popup-reveal) * 6px;
+                height: parent.height - (1 - root.popup-reveal) * 6px;
+                opacity: root.popup-reveal;
+                background: Theme.card; border-radius: 5px; border-width: 1px; border-color: Theme.text-tertiary;
+                ScrollView {
+                    horizontal-scrollbar-policy: always-off;
+                    content-y: -max(0, root.current-index - 6) * 34px;
+                    VerticalLayout {
+                        padding: 4px; spacing: 0px;
+                        for value[index] in root.model : Rectangle {
+                            height: 34px;
+                            background: item.pressed ? #C5294960 : index == root.current-index ? #C5294938 : item.has-hover ? #FFFFFF12 : transparent;
+                            border-radius: 3px;
+                            animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                            Text { x: 8px; width: parent.width - 16px; height: parent.height; text: value; vertical-alignment: center; overflow: elide; color: Theme.text; font-size: 12px; }
+                            item := TouchArea { mouse-cursor: pointer; clicked => { base.select(index); popup.close(); } }
+                            accessible-role: list-item;
+                            accessible-label: value;
+                            accessible-checked: index == root.current-index;
+                            accessible-action-default => { base.select(index); popup.close(); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+

@@ -1,0 +1,493 @@
+import { Theme } from "theme.slint";
+import { LineEdit } from "std-widgets.slint";
+
+export component Surface inherits Rectangle {
+    background: Theme.card;
+    border-width: 1px;
+    border-color: Theme.stroke;
+    border-radius: 8px;
+    vertical-stretch: 0;
+    min-height: content.min-height;
+    max-height: content.min-height;
+    content := VerticalLayout {
+        padding: 0px;
+        spacing: 0px;
+        alignment: start;
+        @children
+    }
+}
+
+// Shared geometry keeps icon-only and labelled controls centred in every state.
+export component FxButton inherits Rectangle {
+    in property <string> text;
+    in property <image> icon;
+    in property <bool> primary: false;
+    in property <bool> enabled: true;
+    in property <length> horizontal-padding: 12px;
+    callback clicked;
+    min-width: max(32px, content.min-width);
+    min-height: 32px;
+    max-height: 32px;
+    horizontal-stretch: 0;
+    vertical-stretch: 0;
+    border-radius: 5px;
+    border-width: 1px;
+    border-color: keys.has-focus && Theme.keyboard-navigation ? Theme.text : #FFFFFF18;
+    background: !root.enabled ? #FFFFFF08 : area.pressed ? (root.primary ? #8F1B35 : #FFFFFF08) : area.has-hover ? (root.primary ? #DA3657 : #FFFFFF18) : root.primary ? #C52949 : #FFFFFF0D;
+    animate background, border-color {
+        duration: Theme.animations-enabled ? Theme.motion-quick : 0ms;
+        easing: ease-out;
+    }
+    forward-focus: keys;
+    content := HorizontalLayout {
+        padding-left: root.horizontal-padding; padding-right: root.horizontal-padding;
+        spacing: 6px; alignment: center;
+        if root.icon.width > 0 : Rectangle {
+            width: 16px; background: transparent;
+            Image { width: 16px; height: 16px; y: (parent.height - self.height) / 2; source: root.icon; colorize: root.enabled ? Theme.text : Theme.text-disabled; }
+        }
+        if root.text != "" : Text {
+            text: root.text; vertical-alignment: center; horizontal-alignment: center;
+            color: root.enabled ? Theme.text : Theme.text-disabled;
+            font-size: 12px;
+            animate color { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+        }
+    }
+    area := TouchArea {
+        enabled: root.enabled;
+        mouse-cursor: root.enabled ? pointer : default;
+        clicked => { Theme.keyboard-navigation = false; keys.focus(); root.clicked(); }
+    }
+    keys := FocusScope {
+        width: 0px; enabled: root.enabled;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == Key.Space { root.clicked(); return accept; }
+            return reject;
+        }
+    }
+    accessible-role: button;
+    accessible-label: root.text;
+    accessible-enabled: root.enabled;
+    accessible-action-default => { if root.enabled { root.clicked(); } }
+}
+
+export component FxIconButton inherits FxButton {
+    in property <string> tooltip;
+    width: 32px;
+    height: 32px;
+    horizontal-padding: 8px;
+    accessible-label: root.tooltip;
+}
+
+export component FxNavItem inherits Rectangle {
+    in property <string> label;
+    in property <image> icon;
+    in property <bool> selected;
+    callback clicked;
+
+    height: 38px;
+    border-radius: 4px;
+    background: area.pressed ? #C5294938 : root.selected ? #C5294922 : area.has-hover ? #FFFFFF0E : transparent;
+    animate background { duration: Theme.animations-enabled ? Theme.motion-base : 0ms; easing: cubic-bezier(0.2, 0, 0, 1); }
+    border-width: keys.has-focus && Theme.keyboard-navigation ? 1px : 0px;
+    border-color: Theme.accent;
+    forward-focus: keys;
+
+    Rectangle {
+        opacity: root.selected ? 1 : 0;
+        animate opacity, height { duration: Theme.animations-enabled ? Theme.motion-base : 0ms; easing: cubic-bezier(0.2, 0, 0, 1); }
+        x: 0;
+        y: (root.height - self.height) / 2;
+        width: 3px;
+        height: root.selected ? 20px : 6px;
+        border-radius: 2px;
+        background: Theme.accent;
+    }
+    Image {
+        x: 12px;
+        y: (root.height - self.height) / 2;
+        width: 18px;
+        height: 18px;
+        source: root.icon;
+        colorize: (root.selected || area.has-hover) ? Theme.text : Theme.text-secondary;
+        animate colorize { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+    }
+    Text { vertical-stretch: 0;
+        x: 42px;
+        width: root.width - 50px;
+        height: root.height;
+        text: root.label;
+        color: Theme.text;
+        font-size: 14px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+    area := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Theme.keyboard-navigation = false; keys.focus(); root.clicked(); }
+    }
+    keys := FocusScope {
+        width: 0px;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == Key.Space { root.clicked(); return accept; }
+            return reject;
+        }
+    }
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+}
+
+export component FxSettingRow inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <length> control-width: 216px;
+    min-height: max(68px, copy.min-height + 24px);
+    max-height: self.min-height;
+    vertical-stretch: 0;
+    background: transparent;
+    copy := VerticalLayout {
+        x: 16px;
+        y: 12px;
+        width: root.width - root.control-width - 48px;
+        height: root.height - 24px;
+        alignment: center;
+        spacing: 4px;
+        Text { vertical-stretch: 0; text: root.title; color: Theme.text; font-size: 14px; wrap: word-wrap; }
+        if root.subtitle != "" : Text { vertical-stretch: 0; text: root.subtitle; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+    }
+    HorizontalLayout {
+        x: root.width - root.control-width - 16px;
+        y: (root.height - 32px) / 2;
+        width: root.control-width;
+        height: 32px;
+        spacing: 8px;
+        @children
+    }
+}
+
+export component FxToggleCard inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    in property <string> badge;
+    in property <bool> selected;
+    in property <bool> enabled: true;
+    in property <int> kind;
+    callback toggled;
+
+    min-height: max(64px, copy.min-height + 24px);
+    max-height: self.min-height;
+    vertical-stretch: 0;
+    background: area.pressed ? #FFFFFF10 : area.has-hover && root.enabled ? #FFFFFF08 : transparent;
+    animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+    Image {
+        x: 16px;
+        y: (root.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        source: root.kind == 0 ? @image-url("icons/gauge.svg") : root.kind == 1 ? @image-url("icons/fast-forward.svg") : @image-url("icons/flask.svg");
+        colorize: root.enabled ? Theme.text-secondary : Theme.text-disabled;
+    }
+    copy := VerticalLayout {
+        x: 52px;
+        y: 12px;
+        width: root.width - 132px;
+        height: root.height - 24px;
+        alignment: center;
+        spacing: 4px;
+        Text { vertical-stretch: 0; text: root.title; color: root.enabled ? Theme.text : Theme.text-disabled; font-size: 14px; wrap: word-wrap; }
+        Text { vertical-stretch: 0; text: root.subtitle; color: root.enabled ? Theme.text-secondary : Theme.text-disabled; font-size: 12px; wrap: word-wrap; }
+    }
+    area := TouchArea {
+        mouse-cursor: root.enabled ? pointer : default;
+        width: root.width - 72px;
+        enabled: root.enabled;
+        clicked => { root.toggled(); }
+    }
+    toggle := Rectangle {
+        x: root.width - 56px;
+        y: (root.height - 20px) / 2;
+        width: 40px;
+        height: 20px;
+        border-radius: 10px;
+        background: !root.enabled ? #FFFFFF08 : switch-area.pressed ? #8F1B35 : root.selected ? Theme.accent : switch-area.has-hover ? #FFFFFF28 : #FFFFFF15;
+        border-width: switch-keys.has-focus && Theme.keyboard-navigation ? 2px : 1px;
+        border-color: switch-keys.has-focus && Theme.keyboard-navigation ? Theme.text : Theme.text-tertiary;
+        animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+        Rectangle {
+            width: 12px; height: 12px; y: 4px;
+            x: root.selected ? 24px : 4px;
+            border-radius: 6px;
+            background: root.enabled ? Theme.text : Theme.text-disabled;
+            animate x, background {
+                duration: Theme.animations-enabled ? Theme.motion-base : 0ms;
+                easing: cubic-bezier(0.2, 0, 0, 1);
+            }
+        }
+        switch-area := TouchArea { enabled: root.enabled; mouse-cursor: pointer; clicked => { Theme.keyboard-navigation = false; switch-keys.focus(); root.toggled(); } }
+        forward-focus: switch-keys;
+        switch-keys := FocusScope {
+            width: 0px; enabled: root.enabled;
+            key-pressed(event) => {
+                if event.text == Key.Return || event.text == Key.Space { root.toggled(); return accept; }
+                return reject;
+            }
+        }
+        accessible-role: checkbox;
+        accessible-label: root.title;
+        accessible-enabled: root.enabled;
+        accessible-checkable: true;
+        accessible-checked: root.selected;
+        accessible-action-default => { if root.enabled { root.toggled(); } }
+    }
+}
+
+export component FxStepRow inherits Rectangle {
+    in property <bool> done;
+    in property <string> title;
+    in property <string> detail;
+    callback activated;
+    min-height: max(56px, copy.min-height + 16px);
+    max-height: self.min-height;
+    vertical-stretch: 0;
+    Rectangle {
+        x: 0;
+        y: (root.height - self.height) / 2;
+        width: 20px;
+        height: 20px;
+        border-radius: 10px;
+        background: root.done ? Theme.success : transparent;
+        border-width: root.done ? 0px : 1px;
+        border-color: Theme.text-tertiary;
+        animate background {
+            duration: Theme.animations-enabled ? Theme.motion-base : 0ms;
+            easing: ease-out;
+        }
+        if root.done : Image {
+            x: 4px; y: 4px; width: 12px; height: 12px;
+            source: @image-url("icons/check.svg"); colorize: #202020;
+        }
+    }
+    copy := VerticalLayout {
+        x: 32px; y: 8px; width: root.width - 32px; height: root.height - 16px;
+        alignment: center; spacing: 3px;
+        Text { vertical-stretch: 0; text: root.title; color: Theme.text; font-size: 14px; }
+        Text { vertical-stretch: 0; text: root.detail; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+    }
+    TouchArea { mouse-cursor: pointer; clicked => { root.activated(); } }
+    accessible-role: button;
+    accessible-label: root.title;
+    accessible-action-default => { root.activated(); }
+}
+
+// Horizontal pill tabs used only by Configurações, so that page reads
+// differently from the vertical navigation in Patches e perfil.
+export component FxSettingsTab inherits Rectangle {
+    in property <string> label;
+    in property <bool> selected;
+    callback clicked;
+    height: 34px;
+    min-width: 104px;
+    border-radius: 17px;
+    border-width: 1px;
+    border-color: tab-keys.has-focus && Theme.keyboard-navigation ? Theme.text : root.selected ? #C5294966 : transparent;
+    background: root.selected ? #C5294933 : tab.has-hover ? #FFFFFF10 : transparent;
+    forward-focus: tab-keys;
+    animate background { duration: Theme.animations-enabled ? 140ms : 0ms; }
+    animate border-color { duration: Theme.animations-enabled ? 140ms : 0ms; }
+    Text {
+        x: 0px; y: 0px; width: parent.width; height: parent.height;
+        text: root.label;
+        horizontal-alignment: center; vertical-alignment: center;
+        color: root.selected ? Theme.text : Theme.text-secondary;
+        font-size: 13px; font-weight: root.selected ? 600 : 400;
+    }
+    tab := TouchArea {
+        mouse-cursor: pointer;
+        clicked => { Theme.keyboard-navigation = false; tab-keys.focus(); root.clicked(); }
+    }
+    tab-keys := FocusScope {
+        width: 0px;
+        key-pressed(event) => {
+            if event.text == Key.Return || event.text == Key.Space { root.clicked(); return accept; }
+            return reject;
+        }
+    }
+    accessible-role: button;
+    accessible-label: root.label;
+    accessible-checked: root.selected;
+    accessible-action-default => { root.clicked(); }
+}
+
+export component FxFieldRow inherits Rectangle {
+    in property <string> label;
+    in property <string> hint;
+    // Textos traduzidos: quem usa o componente passa a versão do idioma ativo.
+    in property <string> found-label: "Encontrado";
+    in property <string> missing-label: "Não encontrado";
+    in property <string> empty-hint: "Selecione uma pasta ou cole o caminho";
+    in property <string> browse-label: "Procurar";
+    // 0 = empty, 1 = found, 2 = not found. The hint doubles as a neutral
+    // placeholder and gives way to the validation result once a path is typed.
+    in property <int> state: 0;
+    in-out property <string> value;
+    callback browse;
+    callback edited;
+    min-height: 60px;
+    max-height: 60px;
+    vertical-stretch: 0;
+    VerticalLayout {
+        spacing: 6px;
+        alignment: start;
+        HorizontalLayout {
+            spacing: 6px;
+            Text { vertical-stretch: 0; text: root.label; color: Theme.text; font-size: 14px; horizontal-stretch: 1; horizontal-alignment: left; }
+            if root.state != 0 : Text {
+                vertical-stretch: 0; vertical-alignment: center;
+                text: "●"; font-size: 8px;
+                color: root.state == 1 ? Theme.success : Theme.warning;
+            }
+            Text {
+                vertical-stretch: 0;
+                text: root.state == 1 ? root.found-label : root.state == 2 ? root.missing-label : root.hint;
+                color: root.state == 2 ? Theme.warning : root.state == 1 ? Theme.success : Theme.text-secondary;
+                font-size: 12px; vertical-alignment: center; horizontal-alignment: right;
+            }
+        }
+        HorizontalLayout {
+            height: 32px;
+            spacing: 8px;
+            LineEdit {
+                text <=> root.value;
+                placeholder-text: root.empty-hint;
+                edited(value) => { root.edited(); }
+            }
+            FxButton { text: root.browse-label; icon: @image-url("icons/folder.svg"); clicked => { root.browse(); } }
+        }
+    }
+}
+
+export component FxPageHeading inherits Rectangle {
+    in property <string> title;
+    in property <string> subtitle;
+    min-height: copy.min-height;
+    max-height: copy.min-height;
+    vertical-stretch: 0;
+    copy := VerticalLayout {
+        spacing: 6px;
+        alignment: start;
+        Text { vertical-stretch: 0; text: root.title; color: Theme.text; font-size: 24px; font-weight: 600; }
+        if root.subtitle != "" : Text { vertical-stretch: 0; text: root.subtitle; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+    }
+}
+
+// Números de resumo da página de troféus.
+export component FxStat inherits VerticalLayout {
+    in property <string> value;
+    in property <string> caption;
+    in property <bool> align-right: true;
+    spacing: 1px;
+    vertical-stretch: 0;
+    Text {
+        horizontal-alignment: root.align-right ? right : left;
+        vertical-stretch: 0; text: root.value;
+        color: Theme.text; font-size: 18px; font-weight: 600;
+    }
+    Text {
+        horizontal-alignment: root.align-right ? right : left;
+        vertical-stretch: 0; text: root.caption;
+        color: Theme.text-secondary; font-size: 11px;
+    }
+}
+
+// Uma linha de troféu: ícone extraído (ou o símbolo do tipo), nome, descrição,
+// tipo e estado. Nada aqui altera o progresso; a página é somente leitura.
+export component FxTrophyRow inherits Rectangle {
+    in property <string> title;
+    in property <string> detail;
+    in property <string> grade;
+    in property <int> grade-kind: 4;
+    in property <bool> unlocked;
+    in property <bool> hidden-state;
+    in property <image> icon;
+    in property <bool> has-icon;
+    in property <string> hidden-suffix: " · Oculto";
+    in property <string> unlocked-label: "Desbloqueado";
+    in property <string> locked-label: "Bloqueado";
+
+    function grade-color(kind: int) -> color {
+        return kind == 0 ? #9FC2DA : kind == 1 ? #E0B24A : kind == 2 ? #BFC7D1 : kind == 3 ? #C08457 : Theme.text-tertiary;
+    }
+
+    height: 76px;
+    background: transparent;
+
+    Rectangle {
+        x: 12px; y: (root.height - self.height) / 2;
+        width: 48px; height: 48px;
+        border-radius: 6px;
+        background: #FFFFFF08;
+        border-width: 1px;
+        border-color: Theme.stroke;
+        opacity: root.unlocked ? 1 : 0.5;
+        if root.has-icon : Image {
+            width: 40px; height: 40px;
+            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+            source: root.icon;
+        }
+        // Sem ícone extraído, o marcador é o ômega do jogo na cor do tipo.
+        if !root.has-icon : Text {
+            x: 0px; y: 0px;
+            width: parent.width; height: parent.height;
+            text: "Ω";
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            color: root.grade-color(root.grade-kind);
+            font-size: 24px;
+            font-weight: 700;
+        }
+    }
+
+    VerticalLayout {
+        x: 72px; y: 10px;
+        width: max(120px, root.width - 250px);
+        height: root.height - 20px;
+        alignment: center;
+        spacing: 2px;
+        Text {
+            vertical-stretch: 0; text: root.title;
+            color: root.unlocked ? Theme.text : Theme.text-secondary;
+            font-size: 13px; font-weight: 600;
+            wrap: word-wrap;
+        }
+        Text {
+            vertical-stretch: 0; text: root.detail;
+            color: root.unlocked ? Theme.text-secondary : Theme.text-tertiary;
+            font-size: 12px;
+            wrap: word-wrap;
+        }
+    }
+
+    VerticalLayout {
+        x: root.width - 170px; y: 10px;
+        width: 158px;
+        height: root.height - 20px;
+        alignment: center;
+        spacing: 2px;
+        Text {
+            horizontal-alignment: right;
+            vertical-stretch: 0;
+            text: root.hidden-state ? root.grade + root.hidden-suffix : root.grade;
+            color: root.grade-color(root.grade-kind);
+            font-size: 11px; font-weight: 600;
+        }
+        Text {
+            horizontal-alignment: right;
+            vertical-stretch: 0;
+            text: root.unlocked ? root.unlocked-label : root.locked-label;
+            color: root.unlocked ? #7FD1A0 : Theme.text-tertiary;
+            font-size: 11px;
+        }
+    }
+}

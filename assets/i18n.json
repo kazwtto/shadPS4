@@ -1,0 +1,1106 @@
+{
+  "GoW III Launcher": [
+    "GoW III Launcher",
+    "GoW III Launcher",
+    "GoW III Launcher",
+    "GoW III Launcher"
+  ],
+  "GOW III": [
+    "GOW III",
+    "GOW III",
+    "GOW III",
+    "GOW III"
+  ],
+  "Início": [
+    "Home",
+    "Inicio",
+    "Accueil",
+    "Start"
+  ],
+  "Ajustes": [
+    "Tweaks",
+    "Ajustes",
+    "Réglages",
+    "Anpassungen"
+  ],
+  "Atividade e logs": [
+    "Activity and logs",
+    "Actividad y registros",
+    "Activité et journaux",
+    "Aktivität und Logs"
+  ],
+  "Troféus": [
+    "Trophies",
+    "Trofeos",
+    "Trophées",
+    "Trophäen"
+  ],
+  "Configurações": [
+    "Settings",
+    "Configuración",
+    "Paramètres",
+    "Einstellungen"
+  ],
+  "God of War III Remastered · CUSA01623 · 01.02": [
+    "God of War III Remastered · CUSA01623 · 01.02",
+    "God of War III Remastered · CUSA01623 · 01.02",
+    "God of War III Remastered · CUSA01623 · 01.02",
+    "God of War III Remastered · CUSA01623 · 01.02"
+  ],
+  "Baixar": [
+    "Download",
+    "Descargar",
+    "Télécharger",
+    "Herunterladen"
+  ],
+  "Depois": [
+    "Later",
+    "Después",
+    "Plus tard",
+    "Später"
+  ],
+  "Perfil de patches": [
+    "Patch profile",
+    "Perfil de parches",
+    "Profil de correctifs",
+    "Patch-Profil"
+  ],
+  " patches · ": [
+    " patches · ",
+    " parches · ",
+    " correctifs · ",
+    " Patches · "
+  ],
+  " · DMEM extra ": [
+    " · extra DMEM ",
+    " · DMEM extra ",
+    " · DMEM supplémentaire ",
+    " · zusätzlicher DMEM "
+  ],
+  "Primeiros passos": [
+    "First steps",
+    "Primeros pasos",
+    "Premiers pas",
+    "Erste Schritte"
+  ],
+  "Arquivos do jogo": [
+    "Game files",
+    "Archivos del juego",
+    "Fichiers du jeu",
+    "Spieldateien"
+  ],
+  "Última sessão · ": [
+    "Last session · ",
+    "Última sesión · ",
+    "Dernière session · ",
+    "Letzte Sitzung · "
+  ],
+  "Ver atividade": [
+    "View activity",
+    "Ver actividad",
+    "Voir l'activité",
+    "Aktivität ansehen"
+  ],
+  "As alterações são aplicadas no próximo início do jogo.": [
+    "Changes apply the next time the game starts.",
+    "Los cambios se aplican al próximo inicio del juego.",
+    "Les modifications s'appliquent au prochain démarrage du jeu.",
+    "Änderungen gelten beim nächsten Spielstart."
+  ],
+  "Perfil": [
+    "Profile",
+    "Perfil",
+    "Profil",
+    "Profil"
+  ],
+  "Salvar seleção como perfil": [
+    "Save selection as profile",
+    "Guardar selección como perfil",
+    "Enregistrer la sélection comme profil",
+    "Auswahl als Profil speichern"
+  ],
+  "Gráfico": [
+    "Graphics",
+    "Gráficos",
+    "Graphismes",
+    "Grafik"
+  ],
+  "Aprimoramento": [
+    "Enhancement",
+    "Mejoras",
+    "Amélioration",
+    "Verbesserung"
+  ],
+  "Input": [
+    "Input",
+    "Entrada",
+    "Entrées",
+    "Eingabe"
+  ],
+  "Experimentos": [
+    "Experiments",
+    "Experimentos",
+    "Expérimentations",
+    "Experimente"
+  ],
+  "Geral": [
+    "General",
+    "General",
+    "Général",
+    "Allgemein"
+  ],
+  "Imagem e sombras": [
+    "Image and shadows",
+    "Imagen y sombras",
+    "Image et ombres",
+    "Bild und Schatten"
+  ],
+  "Partículas": [
+    "Particles",
+    "Partículas",
+    "Particules",
+    "Partikel"
+  ],
+  "CPU e geometria": [
+    "CPU and geometry",
+    "CPU y geometría",
+    "CPU et géométrie",
+    "CPU und Geometrie"
+  ],
+  "Resolução e arena": [
+    "Resolution and arena",
+    "Resolución y arena",
+    "Résolution et arène",
+    "Auflösung und Arena"
+  ],
+  "Modo de exibição": [
+    "Display mode",
+    "Modo de visualización",
+    "Mode d'affichage",
+    "Anzeigemodus"
+  ],
+  "Janela, tela cheia ou tela cheia sem bordas.": [
+    "Windowed, fullscreen or borderless fullscreen.",
+    "Ventana, pantalla completa o pantalla completa sin bordes.",
+    "Fenêtré, plein écran ou plein écran sans bordures.",
+    "Fenster, Vollbild oder randloses Vollbild."
+  ],
+  "Modo de apresentação": [
+    "Present mode",
+    "Modo de presentación",
+    "Mode de présentation",
+    "Präsentationsmodus"
+  ],
+  "Mailbox, Fifo ou Immediate.": [
+    "Mailbox, Fifo or Immediate.",
+    "Mailbox, Fifo o Immediate.",
+    "Mailbox, Fifo ou Immediate.",
+    "Mailbox, Fifo oder Immediate."
+  ],
+  "Largura da janela": [
+    "Window width",
+    "Ancho de la ventana",
+    "Largeur de la fenêtre",
+    "Fensterbreite"
+  ],
+  "0 a 8000. Zero mantém o significado especial do core.": [
+    "0 to 8000. Zero keeps the core's special meaning.",
+    "0 a 8000. Cero mantiene el significado especial del núcleo.",
+    "0 à 8000. Zéro conserve la signification spéciale du cœur.",
+    "0 bis 8000. Null behält die besondere Bedeutung des Kerns."
+  ],
+  "Aplicar": [
+    "Apply",
+    "Aplicar",
+    "Appliquer",
+    "Anwenden"
+  ],
+  "Altura da janela": [
+    "Window height",
+    "Alto de la ventana",
+    "Hauteur de la fenêtre",
+    "Fensterhöhe"
+  ],
+  "0 a 7000. Zero mantém o significado especial do core.": [
+    "0 to 7000. Zero keeps the core's special meaning.",
+    "0 a 7000. Cero mantiene el significado especial del núcleo.",
+    "0 à 7000. Zéro conserve la signification spéciale du cœur.",
+    "0 bis 7000. Null behält die besondere Bedeutung des Kerns."
+  ],
+  "Permite saída HDR quando a tela e o jogo suportarem.": [
+    "Allows HDR output when the display and the game support it.",
+    "Permite salida HDR cuando la pantalla y el juego lo admiten.",
+    "Autorise la sortie HDR lorsque l'écran et le jeu le prennent en charge.",
+    "Erlaubt HDR-Ausgabe, wenn Bildschirm und Spiel es unterstützen."
+  ],
+  "Anti-aliasing": [
+    "Anti-aliasing",
+    "Anti-aliasing",
+    "Anti-aliasing",
+    "Anti-Aliasing"
+  ],
+  "Nenhum, FSR1, PSMAA ou CMAA2.": [
+    "None, FSR1, PSMAA or CMAA2.",
+    "Ninguno, FSR1, PSMAA o CMAA2.",
+    "Aucun, FSR1, PSMAA ou CMAA2.",
+    "Keines, FSR1, PSMAA oder CMAA2."
+  ],
+  "Upscaler": [
+    "Upscaler",
+    "Upscaler",
+    "Upscaler",
+    "Upscaler"
+  ],
+  "Nenhum ou FSR1.": [
+    "None or FSR1.",
+    "Ninguno o FSR1.",
+    "Aucun ou FSR1.",
+    "Keines oder FSR1."
+  ],
+  "Nitidez": [
+    "Sharpening",
+    "Nitidez",
+    "Netteté",
+    "Schärfe"
+  ],
+  "Nenhum ou RCAS.": [
+    "None or RCAS.",
+    "Ninguno o RCAS.",
+    "Aucun ou RCAS.",
+    "Keines oder RCAS."
+  ],
+  "Intensidade RCAS": [
+    "RCAS strength",
+    "Intensidad RCAS",
+    "Intensité RCAS",
+    "RCAS-Stärke"
+  ],
+  "0 a 3.": [
+    "0 to 3.",
+    "0 a 3.",
+    "0 à 3.",
+    "0 bis 3."
+  ],
+  "Controles de movimento": [
+    "Motion controls",
+    "Controles de movimiento",
+    "Contrôles de mouvement",
+    "Bewegungssteuerung"
+  ],
+  "Movimento por giroscópio, quando o jogo suportar.": [
+    "Gyroscope motion, when the game supports it.",
+    "Movimiento por giroscopio, cuando el juego lo admita.",
+    "Mouvement gyroscopique, lorsque le jeu le prend en charge.",
+    "Gyroskopbewegung, wenn das Spiel sie unterstützt."
+  ],
+  "Entrada de controle em segundo plano": [
+    "Background controller input",
+    "Entrada de mando en segundo plano",
+    "Entrées de manette en arrière-plan",
+    "Controller-Eingabe im Hintergrund"
+  ],
+  "Mantém o controle ativo quando a janela perde o foco.": [
+    "Keeps the controller active when the window loses focus.",
+    "Mantiene el mando activo cuando la ventana pierde el foco.",
+    "Garde la manette active quand la fenêtre perd le focus.",
+    "Hält den Controller aktiv, wenn das Fenster den Fokus verliert."
+  ],
+  "Ocultar cursor": [
+    "Hide cursor",
+    "Ocultar cursor",
+    "Masquer le curseur",
+    "Cursor ausblenden"
+  ],
+  "Nunca, após ociosidade ou sempre.": [
+    "Never, after idle or always.",
+    "Nunca, tras inactividad o siempre.",
+    "Jamais, après inactivité ou toujours.",
+    "Nie, nach Leerlauf oder immer."
+  ],
+  "Tempo para ocultar o cursor ocioso": [
+    "Idle cursor hide delay",
+    "Tiempo para ocultar el cursor inactivo",
+    "Délai de masquage du curseur inactif",
+    "Verzögerung zum Ausblenden des Cursors"
+  ],
+  "1 a 10 segundos. Só se aplica no estado ocioso.": [
+    "1 to 10 seconds. Only applies while idle.",
+    "1 a 10 segundos. Solo se aplica en estado inactivo.",
+    "1 à 10 secondes. Ne s'applique qu'en inactivité.",
+    "1 bis 10 Sekunden. Gilt nur im Leerlauf."
+  ],
+  "Sombras dinâmicas": [
+    "Dynamic shadows",
+    "Sombras dinámicas",
+    "Ombres dynamiques",
+    "Dynamische Schatten"
+  ],
+  "Variantes exclusivas. OFF é parcial; alcances reduzidos podem retirar sombras distantes.": [
+    "Exclusive variants. OFF is partial; shorter ranges may drop distant shadows.",
+    "Variantes exclusivas. OFF es parcial; alcances reducidos pueden quitar sombras lejanas.",
+    "Variantes exclusives. OFF est partiel ; des portées réduites peuvent supprimer les ombres lointaines.",
+    "Exklusive Varianten. OFF ist teilweise; kürzere Reichweiten können ferne Schatten entfernen."
+  ],
+  "Original": [
+    "Original",
+    "Original",
+    "Original",
+    "Original"
+  ],
+  "Desligadas (parcial)": [
+    "Off (partial)",
+    "Apagadas (parcial)",
+    "Désactivées (partiel)",
+    "Aus (teilweise)"
+  ],
+  "Alcance 75%": [
+    "75% range",
+    "Alcance 75%",
+    "Portée 75 %",
+    "Reichweite 75 %"
+  ],
+  "Alcance 50%": [
+    "50% range",
+    "Alcance 50%",
+    "Portée 50 %",
+    "Reichweite 50 %"
+  ],
+  "Emissão global": [
+    "Global emission",
+    "Emisión global",
+    "Émission globale",
+    "Globale Emission"
+  ],
+  "Inclui efeitos de combate. Selecione uma única taxa.": [
+    "Includes combat effects. Pick a single rate.",
+    "Incluye efectos de combate. Elige una sola tasa.",
+    "Inclut les effets de combat. Choisissez un seul taux.",
+    "Enthält Kampfeffekte. Wähle eine einzige Rate."
+  ],
+  "Original (100%)": [
+    "Original (100%)",
+    "Original (100%)",
+    "Original (100%)",
+    "Original (100%)"
+  ],
+  "Cache de shaders": [
+    "Shader cache",
+    "Caché de shaders",
+    "Cache de shaders",
+    "Shader-Cache"
+  ],
+  "Preferência persistente; o seletor de Configurações vale só para a próxima sessão.": [
+    "Persistent preference; the Settings selector only applies to the next session.",
+    "Preferencia persistente; el selector de Configuración solo vale para la próxima sesión.",
+    "Préférence persistante ; le sélecteur des Paramètres ne vaut que pour la prochaine session.",
+    "Dauerhafte Einstellung; die Auswahl in den Einstellungen gilt nur für die nächste Sitzung."
+  ],
+  "Compactar cache de shaders": [
+    "Compress shader cache",
+    "Comprimir caché de shaders",
+    "Compresser le cache de shaders",
+    "Shader-Cache komprimieren"
+  ],
+  "Guarda o cache em um zip.": [
+    "Stores the cache in a zip file.",
+    "Guarda la caché en un zip.",
+    "Stocke le cache dans un zip.",
+    "Speichert den Cache in einer Zip-Datei."
+  ],
+  "DMEM adicional": [
+    "Extra DMEM",
+    "DMEM adicional",
+    "DMEM supplémentaire",
+    "Zusätzlicher DMEM"
+  ],
+  "Banda de leitura do HDD": [
+    "HDD read bandwidth",
+    "Ancho de lectura del HDD",
+    "Bande passante de lecture du disque",
+    "HDD-Lesebandbreite"
+  ],
+  "0 ou acima de 200: ilimitado. Atual: ": [
+    "0 or above 200: unlimited. Current: ",
+    "0 o más de 200: ilimitado. Actual: ",
+    "0 ou plus de 200 : illimité. Actuel : ",
+    "0 oder über 200: unbegrenzt. Aktuell: "
+  ],
+  "Desativar time stretching do HDD": [
+    "Disable HDD time stretching",
+    "Desactivar time stretching del HDD",
+    "Désactiver le time stretching du disque",
+    "HDD-Zeitdehnung deaktivieren"
+  ],
+  "Só com banda de leitura limitada.": [
+    "Only with limited read bandwidth.",
+    "Solo con ancho de lectura limitado.",
+    "Uniquement avec une bande passante limitée.",
+    "Nur bei begrenzter Lesebandbreite."
+  ],
+  "Modo de readbacks": [
+    "Readback mode",
+    "Modo de readbacks",
+    "Mode de readback",
+    "Readback-Modus"
+  ],
+  "Desativado, relaxado ou preciso.": [
+    "Disabled, relaxed or precise.",
+    "Desactivado, relajado o preciso.",
+    "Désactivé, détendu ou précis.",
+    "Deaktiviert, entspannt oder präzise."
+  ],
+  "Readback de imagens lineares": [
+    "Linear image readback",
+    "Readback de imágenes lineales",
+    "Readback des images linéaires",
+    "Readback linearer Bilder"
+  ],
+  "Também lê imagens lineares da GPU.": [
+    "Also reads linear images from the GPU.",
+    "También lee imágenes lineales de la GPU.",
+    "Lit aussi les images linéaires du GPU.",
+    "Liest auch lineare Bilder der GPU."
+  ],
+  "Acesso direto à memória": [
+    "Direct memory access",
+    "Acceso directo a memoria",
+    "Accès direct à la mémoire",
+    "Direkter Speicherzugriff"
+  ],
+  "Permite acesso direto à memória da GPU.": [
+    "Allows direct access to GPU memory.",
+    "Permite acceso directo a la memoria de la GPU.",
+    "Autorise l'accès direct à la mémoire du GPU.",
+    "Erlaubt direkten Zugriff auf den GPU-Speicher."
+  ],
+  "NVIDIA Raw Access Chains": [
+    "NVIDIA Raw Access Chains",
+    "NVIDIA Raw Access Chains",
+    "NVIDIA Raw Access Chains",
+    "NVIDIA Raw Access Chains"
+  ],
+  "Requer reinício.": [
+    "Requires a restart.",
+    "Requiere reinicio.",
+    "Nécessite un redémarrage.",
+    "Neustart erforderlich."
+  ],
+  "Forçar shaders UBO": [
+    "Force UBO shaders",
+    "Forzar shaders UBO",
+    "Forcer les shaders UBO",
+    "UBO-Shader erzwingen"
+  ],
+  "Windows Guest Red Zone Protection": [
+    "Windows Guest Red Zone Protection",
+    "Windows Guest Red Zone Protection",
+    "Windows Guest Red Zone Protection",
+    "Windows Guest Red Zone Protection"
+  ],
+  "Requer reinício. Somente no Windows.": [
+    "Requires a restart. Windows only.",
+    "Requiere reinicio. Solo en Windows.",
+    "Nécessite un redémarrage. Windows uniquement.",
+    "Neustart erforderlich. Nur unter Windows."
+  ],
+  "Modo Devkit": [
+    "Devkit mode",
+    "Modo Devkit",
+    "Mode Devkit",
+    "Devkit-Modus"
+  ],
+  "Apresenta o console como unidade de desenvolvimento.": [
+    "Presents the console as a development unit.",
+    "Presenta la consola como unidad de desarrollo.",
+    "Présente la console comme une unité de développement.",
+    "Zeigt die Konsole als Entwicklungsgerät."
+  ],
+  "Modo PS4 Neo": [
+    "PS4 Neo mode",
+    "Modo PS4 Neo",
+    "Mode PS4 Neo",
+    "PS4-Neo-Modus"
+  ],
+  "Anuncia o modo Neo ao jogo.": [
+    "Announces Neo mode to the game.",
+    "Anuncia el modo Neo al juego.",
+    "Annonce le mode Neo au jeu.",
+    "Meldet dem Spiel den Neo-Modus."
+  ],
+  "ShadNet": [
+    "ShadNet",
+    "ShadNet",
+    "ShadNet",
+    "ShadNet"
+  ],
+  "Rede do ShadPS4 para multijogador.": [
+    "ShadPS4 multiplayer network.",
+    "Red de ShadPS4 para multijugador.",
+    "Réseau multijoueur de ShadPS4.",
+    "ShadPS4-Netzwerk für Mehrspieler."
+  ],
+  "Rede conectada": [
+    "Network connected",
+    "Red conectada",
+    "Réseau connecté",
+    "Netzwerk verbunden"
+  ],
+  "Informa ao jogo que a rede está conectada.": [
+    "Tells the game the network is connected.",
+    "Informa al juego que la red está conectada.",
+    "Indique au jeu que le réseau est connecté.",
+    "Teilt dem Spiel mit, dass das Netzwerk verbunden ist."
+  ],
+  "Abrir sessão": [
+    "Open session",
+    "Abrir sesión",
+    "Ouvrir la session",
+    "Sitzung öffnen"
+  ],
+  "Pasta de logs": [
+    "Logs folder",
+    "Carpeta de registros",
+    "Dossier des journaux",
+    "Log-Ordner"
+  ],
+  "Limpar painel": [
+    "Clear panel",
+    "Limpiar panel",
+    "Vider le panneau",
+    "Panel leeren"
+  ],
+  "Recarregar troféus": [
+    "Reload trophies",
+    "Recargar trofeos",
+    "Recharger les trophées",
+    "Trophäen neu laden"
+  ],
+  "Todos": [
+    "All",
+    "Todos",
+    "Tous",
+    "Alle"
+  ],
+  "Desbloqueados": [
+    "Unlocked",
+    "Desbloqueados",
+    "Débloqués",
+    "Freigeschaltet"
+  ],
+  "Bloqueados": [
+    "Locked",
+    "Bloqueados",
+    "Verrouillés",
+    "Gesperrt"
+  ],
+  "Caminhos e preferências do launcher.": [
+    "Launcher paths and preferences.",
+    "Rutas y preferencias del launcher.",
+    "Chemins et préférences du launcher.",
+    "Pfade und Einstellungen des Launchers."
+  ],
+  "Caminhos": [
+    "Paths",
+    "Rutas",
+    "Chemins",
+    "Pfade"
+  ],
+  "Execução": [
+    "Execution",
+    "Ejecución",
+    "Exécution",
+    "Ausführung"
+  ],
+  "Interface": [
+    "Interface",
+    "Interfaz",
+    "Interface",
+    "Oberfläche"
+  ],
+  "Áudio": [
+    "Audio",
+    "Audio",
+    "Audio",
+    "Audio"
+  ],
+  "Dados": [
+    "Data",
+    "Datos",
+    "Données",
+    "Daten"
+  ],
+  "Atualizações": [
+    "Updates",
+    "Actualizaciones",
+    "Mises à jour",
+    "Updates"
+  ],
+  "Atualizações do repositório": [
+    "Repository updates",
+    "Actualizaciones del repositorio",
+    "Mises à jour du dépôt",
+    "Repository-Updates"
+  ],
+  "Verificar agora": [
+    "Check now",
+    "Comprobar ahora",
+    "Vérifier maintenant",
+    "Jetzt prüfen"
+  ],
+  "Verificar automaticamente": [
+    "Check automatically",
+    "Comprobar automáticamente",
+    "Vérifier automatiquement",
+    "Automatisch prüfen"
+  ],
+  "Consulta a última publicação do repositório ao abrir e a cada 6 horas.": [
+    "Checks the latest repository publication at startup and every 6 hours.",
+    "Comprueba la última publicación del repositorio al abrir y cada 6 horas.",
+    "Vérifie la dernière publication du dépôt au démarrage et toutes les 6 heures.",
+    "Prüft die neueste Veröffentlichung des Repos beim Start und alle 6 Stunden."
+  ],
+  "Baixar e instalar": [
+    "Download and install",
+    "Descargar e instalar",
+    "Télécharger et installer",
+    "Herunterladen und installieren"
+  ],
+  "Jogo base": [
+    "Base game",
+    "Juego base",
+    "Jeu de base",
+    "Basisspiel"
+  ],
+  "CUSA01623": [
+    "CUSA01623",
+    "CUSA01623",
+    "CUSA01623",
+    "CUSA01623"
+  ],
+  "Atualização": [
+    "Update",
+    "Actualización",
+    "Mise à jour",
+    "Update"
+  ],
+  "Pasta de builds": [
+    "Builds folder",
+    "Carpeta de builds",
+    "Dossier des builds",
+    "Builds-Ordner"
+  ],
+  "Atualizar lista": [
+    "Refresh list",
+    "Actualizar lista",
+    "Actualiser la liste",
+    "Liste aktualisieren"
+  ],
+  "Baixar última versão": [
+    "Download latest version",
+    "Descargar última versión",
+    "Télécharger la dernière version",
+    "Neueste Version herunterladen"
+  ],
+  "Alterações não salvas": [
+    "Unsaved changes",
+    "Cambios sin guardar",
+    "Modifications non enregistrées",
+    "Nicht gespeicherte Änderungen"
+  ],
+  "Caminhos salvos": [
+    "Paths saved",
+    "Rutas guardadas",
+    "Chemins enregistrés",
+    "Pfade gespeichert"
+  ],
+  "Descartar": [
+    "Discard",
+    "Descartar",
+    "Abandonner",
+    "Verwerfen"
+  ],
+  "Salvar preferências": [
+    "Save preferences",
+    "Guardar preferencias",
+    "Enregistrer les préférences",
+    "Einstellungen speichern"
+  ],
+  "Cache persistente": [
+    "Persistent cache",
+    "Caché persistente",
+    "Cache persistant",
+    "Dauerhafter Cache"
+  ],
+  "Preciso exige cache persistente desligado nesta sessão.": [
+    "Precise requires the persistent cache off in this session.",
+    "Preciso exige la caché persistente desactivada en esta sesión.",
+    "Précis exige le cache persistant désactivé pour cette session.",
+    "Präzise erfordert den dauerhaften Cache in dieser Sitzung deaktiviert."
+  ],
+  "Recompõe os shaders sem cache em disco nesta sessão.": [
+    "Rebuilds shaders without on-disk cache in this session.",
+    "Recompone los shaders sin caché en disco en esta sesión.",
+    "Reconstruit les shaders sans cache disque pour cette session.",
+    "Erstellt Shader in dieser Sitzung ohne Datenträger-Cache neu."
+  ],
+  "Espera a compilação e captura o diagnóstico da sessão.": [
+    "Waits for the build and captures the session diagnostics.",
+    "Espera la compilación y captura el diagnóstico de la sesión.",
+    "Attend la compilation et capture le diagnostic de la session.",
+    "Wartet auf die Kompilierung und erfasst die Sitzungsdiagnose."
+  ],
+  "Preserva a preferência de cache do emulador.": [
+    "Keeps the emulator's cache preference.",
+    "Conserva la preferencia de caché del emulador.",
+    "Conserve la préférence de cache de l'émulateur.",
+    "Behält die Cache-Einstellung des Emulators bei."
+  ],
+  "Usar se habilitado": [
+    "Use if enabled",
+    "Usar si está habilitado",
+    "Utiliser si activé",
+    "Verwenden, wenn aktiviert"
+  ],
+  "Desligado": [
+    "Off",
+    "Desactivado",
+    "Désactivé",
+    "Aus"
+  ],
+  "Usar + esperar shaders": [
+    "Use + wait for shaders",
+    "Usar + esperar shaders",
+    "Utiliser + attendre les shaders",
+    "Verwenden + auf Shader warten"
+  ],
+  "Modo GPU": [
+    "GPU mode",
+    "Modo GPU",
+    "Mode GPU",
+    "GPU-Modus"
+  ],
+  "Backlog 1, sem cache persistente.": [
+    "Backlog 1, no persistent cache.",
+    "Backlog 1, sin caché persistente.",
+    "Backlog 1, sans cache persistant.",
+    "Backlog 1, ohne dauerhaften Cache."
+  ],
+  "Backlog 2, cache nativo se habilitado.": [
+    "Backlog 2, native cache if enabled.",
+    "Backlog 2, caché nativa si está habilitada.",
+    "Backlog 2, cache natif si activé.",
+    "Backlog 2, nativer Cache wenn aktiviert."
+  ],
+  "Backlog 3; pode aumentar latência e memória. Sem cache prevalece.": [
+    "Backlog 3; may raise latency and memory. No cache wins.",
+    "Backlog 3; puede aumentar latencia y memoria. Sin caché prevalece.",
+    "Backlog 3 ; peut augmenter la latence et la mémoire. Sans cache l'emporte.",
+    "Backlog 3; kann Latenz und Speicher erhöhen. Ohne Cache gilt."
+  ],
+  "Preserva o backlog configurado no emulador.": [
+    "Keeps the backlog configured in the emulator.",
+    "Conserva el backlog configurado en el emulador.",
+    "Conserve le backlog configuré dans l'émulateur.",
+    "Behält den im Emulator eingestellten Backlog bei."
+  ],
+  "Configuração do emulador": [
+    "Emulator setting",
+    "Configuración del emulador",
+    "Réglage de l'émulateur",
+    "Emulator-Einstellung"
+  ],
+  "Preciso": [
+    "Precise",
+    "Preciso",
+    "Précis",
+    "Präzise"
+  ],
+  "Balanceado": [
+    "Balanced",
+    "Equilibrado",
+    "Équilibré",
+    "Ausgewogen"
+  ],
+  "Rápido": [
+    "Fast",
+    "Rápido",
+    "Rapide",
+    "Schnell"
+  ],
+  "Os três modos exigem cache preguiçoso e espera por shaders; preservam precisão e barreiras.": [
+    "All three modes require lazy cache and shader waiting; they keep precision and barriers.",
+    "Los tres modos exigen caché perezosa y espera de shaders; conservan precisión y barreras.",
+    "Les trois modes exigent le cache paresseux et l'attente des shaders ; ils conservent la précision et les barrières.",
+    "Alle drei Modi erfordern Lazy-Cache und Shader-Warten; Genauigkeit und Barrieren bleiben erhalten."
+  ],
+  "Cache preguiçoso": [
+    "Lazy cache",
+    "Caché perezosa",
+    "Cache paresseux",
+    "Lazy-Cache"
+  ],
+  "Obrigatório para o modo GPU selecionado.": [
+    "Required for the selected GPU mode.",
+    "Obligatorio para el modo GPU seleccionado.",
+    "Obligatoire pour le mode GPU sélectionné.",
+    "Erforderlich für den gewählten GPU-Modus."
+  ],
+  "Ativa lazy=1 sem alterar o backlog configurado.": [
+    "Enables lazy=1 without changing the configured backlog.",
+    "Activa lazy=1 sin cambiar el backlog configurado.",
+    "Active lazy=1 sans modifier le backlog configuré.",
+    "Aktiviert lazy=1 ohne den eingestellten Backlog zu ändern."
+  ],
+  "Captura de diagnóstico": [
+    "Diagnostic capture",
+    "Captura de diagnóstico",
+    "Capture de diagnostic",
+    "Diagnoseaufzeichnung"
+  ],
+  "Obrigatória no modo de cache com espera. Grava saída, frametimes e logs.": [
+    "Required in cache-wait mode. Records output, frametimes and logs.",
+    "Obligatoria en el modo de caché con espera. Graba salida, frametimes y registros.",
+    "Obligatoire en mode cache avec attente. Enregistre la sortie, les frametimes et les journaux.",
+    "Erforderlich im Cache-Wartemodus. Zeichnet Ausgabe, Frametimes und Logs auf."
+  ],
+  "Grava saída, frametimes e logs da sessão.": [
+    "Records session output, frametimes and logs.",
+    "Graba salida, frametimes y registros de la sesión.",
+    "Enregistre la sortie, les frametimes et les journaux de la session.",
+    "Zeichnet Ausgabe, Frametimes und Logs der Sitzung auf."
+  ],
+  "Tela de abertura ao iniciar o jogo": [
+    "Splash screen when starting the game",
+    "Pantalla de apertura al iniciar el juego",
+    "Écran d'ouverture au démarrage du jeu",
+    "Startbildschirm beim Spielstart"
+  ],
+  "Mostra a abertura antes do jogo.": [
+    "Shows the splash before the game.",
+    "Muestra la apertura antes del juego.",
+    "Affiche l'ouverture avant le jeu.",
+    "Zeigt den Startbildschirm vor dem Spiel."
+  ],
+  "Referência observada: VBlank 60": [
+    "Observed reference: VBlank 60",
+    "Referencia observada: VBlank 60",
+    "Référence observée : VBlank 60",
+    "Beobachtete Referenz: VBlank 60"
+  ],
+  "Reproduz o estudo com o patch de 120 FPS ativo.": [
+    "Reproduces the study with the 120 FPS patch active.",
+    "Reproduce el estudio con el parche de 120 FPS activo.",
+    "Reproduit l'étude avec le correctif 120 FPS actif.",
+    "Reproduziert die Studie mit aktivem 120-FPS-Patch."
+  ],
+  "Idioma do console": [
+    "Console language",
+    "Idioma de la consola",
+    "Langue de la console",
+    "Konsolensprache"
+  ],
+  "Somente idiomas aceitos.": [
+    "Accepted languages only.",
+    "Solo idiomas aceptados.",
+    "Uniquement les langues acceptées.",
+    "Nur unterstützte Sprachen."
+  ],
+  "Idioma do launcher": [
+    "Launcher language",
+    "Idioma del launcher",
+    "Langue du launcher",
+    "Launcher-Sprache"
+  ],
+  "Automático segue o idioma do console; a escolha manual vale só para o launcher.": [
+    "Automatic follows the console language; a manual choice applies to the launcher only.",
+    "Automático sigue el idioma de la consola; la elección manual solo afecta al launcher.",
+    "Automatique suit la langue de la console ; un choix manuel ne concerne que le launcher.",
+    "Automatisch folgt der Konsolensprache; eine manuelle Wahl gilt nur für den Launcher."
+  ],
+  "Animações da interface": [
+    "Interface animations",
+    "Animaciones de la interfaz",
+    "Animations de l'interface",
+    "Oberflächenanimationen"
+  ],
+  "Transições sutis na navegação e nos controles.": [
+    "Subtle transitions in navigation and controls.",
+    "Transiciones sutiles en la navegación y los controles.",
+    "Transitions subtiles dans la navigation et les contrôles.",
+    "Dezente Übergänge in Navigation und Bedienelementen."
+  ],
+  "Fundo fluido": [
+    "Fluid background",
+    "Fondo fluido",
+    "Fond fluide",
+    "Flüssiger Hintergrund"
+  ],
+  "Simulação sutil de fluidos no rodapé. Desligar também pausa o cálculo.": [
+    "Subtle fluid simulation in the footer. Turning it off also pauses the calculation.",
+    "Simulación sutil de fluidos en el pie. Desactivarla también pausa el cálculo.",
+    "Simulation subtile de fluides dans le pied de page. La désactiver met aussi le calcul en pause.",
+    "Dezente Fluidsimulation in der Fußzeile. Ausschalten pausiert auch die Berechnung."
+  ],
+  "Discord Rich Presence": [
+    "Discord Rich Presence",
+    "Discord Rich Presence",
+    "Discord Rich Presence",
+    "Discord Rich Presence"
+  ],
+  "Mostra a fase da sessão e o progresso de troféus na sua atividade do Discord.": [
+    "Shows the session stage and trophy progress in your Discord activity.",
+    "Muestra la fase de la sesión y el progreso de trofeos en tu actividad de Discord.",
+    "Affiche l'étape de la session et la progression des trophées dans votre activité Discord.",
+    "Zeigt Spielabschnitt und Trophäenfortschritt in deiner Discord-Aktivität."
+  ],
+  "Volume": [
+    "Volume",
+    "Volumen",
+    "Volume",
+    "Lautstärke"
+  ],
+  "Backend de áudio": [
+    "Audio backend",
+    "Backend de audio",
+    "Backend audio",
+    "Audio-Backend"
+  ],
+  "Abrir pasta": [
+    "Open folder",
+    "Abrir carpeta",
+    "Ouvrir le dossier",
+    "Ordner öffnen"
+  ],
+  "Importar saves": [
+    "Import saves",
+    "Importar partidas",
+    "Importer les sauvegardes",
+    "Spielstände importieren"
+  ],
+  "Recuperar sessão": [
+    "Recover session",
+    "Recuperar sesión",
+    "Récupérer la session",
+    "Sitzung wiederherstellen"
+  ],
+  "Descartar pendência": [
+    "Discard pending",
+    "Descartar pendiente",
+    "Abandonner l'attente",
+    "Ausstehendes verwerfen"
+  ],
+  "Saves, caches e configuração ficam separados do jogo original.": [
+    "Saves, caches and configuration stay apart from the original game.",
+    "Partidas, cachés y configuración quedan separadas del juego original.",
+    "Sauvegardes, caches et configuration restent séparés du jeu d'origine.",
+    "Spielstände, Caches und Konfiguration bleiben vom Originalspiel getrennt."
+  ],
+  "Recuperar": [
+    "Recover",
+    "Recuperar",
+    "Récupérer",
+    "Wiederherstellen"
+  ],
+  "Verificar": [
+    "Verify",
+    "Verificar",
+    "Vérifier",
+    "Prüfen"
+  ],
+  "Cancelar": [
+    "Cancel",
+    "Cancelar",
+    "Annuler",
+    "Abbrechen"
+  ],
+  "Em execução": [
+    "Running",
+    "En ejecución",
+    "En cours",
+    "Läuft"
+  ],
+  "Escolher perfil": [
+    "Choose profile",
+    "Elegir perfil",
+    "Choisir un profil",
+    "Profil wählen"
+  ],
+  "Salvar perfil": [
+    "Save profile",
+    "Guardar perfil",
+    "Enregistrer le profil",
+    "Profil speichern"
+  ],
+  "Guarde a seleção atual para usar em outras sessões.": [
+    "Keep the current selection for other sessions.",
+    "Guarda la selección actual para otras sesiones.",
+    "Conservez la sélection actuelle pour d'autres sessions.",
+    "Speichere die aktuelle Auswahl für andere Sitzungen."
+  ],
+  "Nome do perfil": [
+    "Profile name",
+    "Nombre del perfil",
+    "Nom du profil",
+    "Profilname"
+  ],
+  "Até 80 caracteres. Os perfis do pacote são preservados.": [
+    "Up to 80 characters. Bundled profiles are preserved.",
+    "Hasta 80 caracteres. Los perfiles del paquete se conservan.",
+    "Jusqu'à 80 caractères. Les profils fournis sont conservés.",
+    "Bis zu 80 Zeichen. Mitgelieferte Profile bleiben erhalten."
+  ],
+  "Salvar": [
+    "Save",
+    "Guardar",
+    "Enregistrer",
+    "Speichern"
+  ],
+  "Encontrado": [
+    "Found",
+    "Encontrado",
+    "Trouvé",
+    "Gefunden"
+  ],
+  "Não encontrado": [
+    "Not found",
+    "No encontrado",
+    "Introuvable",
+    "Nicht gefunden"
+  ],
+  "Selecione uma pasta ou cole o caminho": [
+    "Select a folder or paste the path",
+    "Selecciona una carpeta o pega la ruta",
+    "Sélectionnez un dossier ou collez le chemin",
+    "Ordner wählen oder Pfad einfügen"
+  ],
+  "Procurar": [
+    "Browse",
+    "Examinar",
+    "Parcourir",
+    "Durchsuchen"
+  ],
+  " · Oculto": [
+    " · Hidden",
+    " · Oculto",
+    " · Masqué",
+    " · Verborgen"
+  ],
+  "Desbloqueado": [
+    "Unlocked",
+    "Desbloqueado",
+    "Débloqué",
+    "Freigeschaltet"
+  ],
+  "Bloqueado": [
+    "Locked",
+    "Bloqueado",
+    "Verrouillé",
+    "Gesperrt"
+  ],
+  "Nenhuma build baixada ainda. Verifique as atualizações.": [
+    "No builds downloaded yet. Check for updates.",
+    "Todavía no hay builds descargadas. Comprueba las actualizaciones.",
+    "Aucune build téléchargée pour l'instant. Vérifiez les mises à jour.",
+    "Noch keine Builds heruntergeladen. Prüfe die Updates."
+  ]
+}

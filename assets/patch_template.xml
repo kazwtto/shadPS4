@@ -1,0 +1,220 @@
+<?xml version='1.0' encoding='utf-8'?>
+<Patch>
+    <TitleID>
+        <ID>CUSA01623</ID>
+    </TitleID>
+    <Metadata Title="God of War III Remastered" Name="Bug Fix - Texture Corruption Fix" Note="Fixes corrupted textures in the game by increasing the Video Arena size, allowing the game to use more video memory for textures and effects. Requires setting DMEM to 2048 MB or more, or the game crashes. Enable either this patch or one resolution patch, never both." Author="cuesta4" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x007cd918" Value="00000090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 480p" Note="Decreases game output resolution to 854x480 and increases Video Arena to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x005f0c5b" Value="56030000" />
+            <Line Type="bytes" Address="0x005f0c63" Value="e0010000" />
+            <Line Type="bytes" Address="0x005f0c6c" Value="5603" />
+            <Line Type="bytes" Address="0x005f0c73" Value="e001" />
+            <Line Type="bytes" Address="0x005643e3" Value="e0010000" />
+            <Line Type="bytes" Address="0x005643f0" Value="56030000" />
+            <Line Type="bytes" Address="0x005ff889" Value="56030000" />
+            <Line Type="bytes" Address="0x005ff88f" Value="e0010000" />
+            <Line Type="bytes" Address="0x007cd918" Value="00000090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 720p" Note="Decreases game output resolution to 1280x720 and increases Video Arena to 2.25 GiB. Requires setting DMEM to 2048 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="true">
+        <PatchList>
+            <Line Type="bytes" Address="0x005f0c5b" Value="00050000" />
+            <Line Type="bytes" Address="0x005f0c63" Value="d0020000" />
+            <Line Type="bytes" Address="0x005f0c6c" Value="0005" />
+            <Line Type="bytes" Address="0x005f0c73" Value="d002" />
+            <Line Type="bytes" Address="0x005643e3" Value="d0020000" />
+            <Line Type="bytes" Address="0x005643f0" Value="00050000" />
+            <Line Type="bytes" Address="0x005ff889" Value="00050000" />
+            <Line Type="bytes" Address="0x005ff88f" Value="d0020000" />
+            <Line Type="bytes" Address="0x007cd918" Value="00000090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 1440p" Note="Increases game output resolution to 2560x1440 and Video Arena to 2.75 GiB. Requires setting DMEM to 3072 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x005f0c5b" Value="000a0000" />
+            <Line Type="bytes" Address="0x005f0c63" Value="a0050000" />
+            <Line Type="bytes" Address="0x005f0c6c" Value="000a" />
+            <Line Type="bytes" Address="0x005f0c73" Value="a005" />
+            <Line Type="bytes" Address="0x005643e3" Value="a0050000" />
+            <Line Type="bytes" Address="0x005643f0" Value="000a0000" />
+            <Line Type="bytes" Address="0x005ff889" Value="000a0000" />
+            <Line Type="bytes" Address="0x005ff88f" Value="a0050000" />
+            <Line Type="bytes" Address="0x007c46b4" Value="000a0000" />
+            <Line Type="bytes" Address="0x007c46b8" Value="a0050000" />
+            <Line Type="bytes" Address="0x0056bb72" Value="a0050000" />
+            <Line Type="bytes" Address="0x0060965d" Value="a0050000" />
+            <Line Type="bytes" Address="0x007f2a3c" Value="00050000" />
+            <Line Type="bytes" Address="0x007f2a40" Value="d0020000" />
+            <Line Type="bytes" Address="0x007cd918" Value="000000b0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 1800p" Note="Increases game output resolution to 3200x1800 and Video Arena to 3.25 GiB. Requires setting DMEM to 4608 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x005f0c5b" Value="800c0000" />
+            <Line Type="bytes" Address="0x005f0c63" Value="08070000" />
+            <Line Type="bytes" Address="0x005f0c6c" Value="800c" />
+            <Line Type="bytes" Address="0x005f0c73" Value="0807" />
+            <Line Type="bytes" Address="0x005643e3" Value="08070000" />
+            <Line Type="bytes" Address="0x005643f0" Value="800c0000" />
+            <Line Type="bytes" Address="0x005ff889" Value="800c0000" />
+            <Line Type="bytes" Address="0x005ff88f" Value="08070000" />
+            <Line Type="bytes" Address="0x007c46b4" Value="800c0000" />
+            <Line Type="bytes" Address="0x007c46b8" Value="08070000" />
+            <Line Type="bytes" Address="0x0056bb72" Value="08070000" />
+            <Line Type="bytes" Address="0x0060965d" Value="08070000" />
+            <Line Type="bytes" Address="0x007f2a3c" Value="40060000" />
+            <Line Type="bytes" Address="0x007f2a40" Value="84030000" />
+            <Line Type="bytes" Address="0x007cd918" Value="000000d0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Resolution Patch - 4K" Note="Increases game output resolution to 3840x2160 and Video Arena to approximately 4 GB (3.75 GiB). Requires setting DMEM to 6144 MB or more. Only leave one resolution patch enabled; do not enable it with Bug Fix - Texture Corruption Fix." Author="kvicken + cuesta4" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x005f0c5b" Value="000f0000" />
+            <Line Type="bytes" Address="0x005f0c63" Value="70080000" />
+            <Line Type="bytes" Address="0x005f0c6c" Value="000f" />
+            <Line Type="bytes" Address="0x005f0c73" Value="7008" />
+            <Line Type="bytes" Address="0x005643e3" Value="70080000" />
+            <Line Type="bytes" Address="0x005643f0" Value="000f0000" />
+            <Line Type="bytes" Address="0x005ff889" Value="000f0000" />
+            <Line Type="bytes" Address="0x005ff88f" Value="70080000" />
+            <Line Type="bytes" Address="0x007c46b4" Value="000f0000" />
+            <Line Type="bytes" Address="0x007c46b8" Value="70080000" />
+            <Line Type="bytes" Address="0x0056bb72" Value="70080000" />
+            <Line Type="bytes" Address="0x0060965d" Value="70080000" />
+            <Line Type="bytes" Address="0x007f2a3c" Value="80070000" />
+            <Line Type="bytes" Address="0x007f2a40" Value="38040000" />
+            <Line Type="bytes" Address="0x007cd918" Value="000000f0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Frame Rate Patch - 120 FPS" Note="Raises the engine maximum framerate from 59.94 to 120 FPS so the frametime clamp produces a 1/120 second gameplay delta. Corrects swing energy calculations to match the original 60 Hz simulation. Requires setting VBlank to 120 FPS." Author="kvicken" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x0048ff0a" Value="488d05e7c22600" />
+            <Line Type="bytes" Address="0x0075dd04" Value="0000f042" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Skip Intro" Note="Skips the initial logos. Thanks to illusion0001 aka illusionyy for the PS3 patch which made this very easy." Author="cuesta4" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="true">
+        <PatchList>
+            <Line Type="bytes" Address="0x00584940" Value="eb34" />
+            <Line Type="bytes" Address="0x004c8430" Value="c7051e0e9b0101000000b801000000c3" />
+            <Line Type="bytes" Address="0x0041b36a" Value="e8216f1f00" />
+            <Line Type="bytes" Address="0x00612290" Value="c705be6f860101000000e9e129eaff" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Skip Any Video With X Button" Note="Allows manual skipping of cinematics any cinematic with the X button. Thanks to illusion0001 aka illusionyy for the PS3 patch which made this very easy." Author="cuesta4" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="true">
+        <PatchList>
+            <Line Type="bytes" Address="0x0041b2a3" Value="7542" />
+            <Line Type="bytes" Address="0x0041b2e7" Value="b901000000909090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.4 - Disable Color Grading" Note="EXPERIMENTAL: gameplay pending. Sets the native PS4 ColorCorrection global enable dword to zero. May change scene and magic lighting. FPS benefit unmeasured." Author="Codex - local PS4 binary analysis" PatchVer="0.4" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x007cdb64" Value="00000000" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.5 - Disable Layered Fog" Note="EXPERIMENTAL: gameplay pending. Forces inactive after evaluation; native branch clears fog constants, pointer and state." Author="Codex - local PS4 binary analysis" PatchVer="0.5" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00607a8b" Value="31c0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.5 - Disable Depth of Field" Note="EXPERIMENTAL: gameplay pending. Forces inactive after parameter/history updates; native epilogue, no DOF job." Author="Codex - local PS4 binary analysis" PatchVer="0.5" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00567548" Value="30c0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.9 - Disable Bloom - producer state" Note="Experimental Bloom OFF: controls producer activation, buffered flags and override. Native render branch and numeric parameter updates retained. Pixel-level overglow fix unconfirmed; no FPS claim." Author="Codex - local PS4 binary analysis" PatchVer="0.9" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00561ca4" Value="31d290" />
+            <Line Type="bytes" Address="0x00561ca7" Value="c6836904000000" />
+            <Line Type="bytes" Address="0x00561cef" Value="889369040000" />
+            <Line Type="bytes" Address="0x00561d2c" Value="c6836904000000" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.5 - Disable Motion Blur - native inactive" Note="EXPERIMENTAL: gameplay pending. Forces inactive after history updates, keeping globals reset. Different from rejected zero-intensity v0.3." Author="Codex - local PS4 binary analysis" PatchVer="0.5" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x0056af5c" Value="31d2" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.5 - Disable Camera Sway" Note="EXPERIMENTAL: gameplay pending. Forces native inactive result after camera evaluation, preserving neutral transform writes. No FPS claim." Author="Codex - local PS4 binary analysis" PatchVer="0.5" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00514274" Value="31c0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.7 - Disable Dynamic Shadows - native inactive" Note="EXPERIMENTAL; gameplay pending. Partial dynamic shadows only. Keeps native evaluation; forces inactive branch that writes three disabled distance thresholds. No guaranteed FPS gain; not a fix for duplicated effects." Author="Codex - local PS4 binary analysis" PatchVer="0.7" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00571a26" Value="31c0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v0.8 - Job Queue Contention PAUSE" Note="L01: PAUSE on failed job queue lock acquisitions only. Same atomic lock and release. Visual settings unchanged. Experimental; no measured gameplay FPS gain." Author="Codex - local binary analysis" PatchVer="0.8" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x005a5907" Value="eb07f390eb03909090" />
+            <Line Type="bytes" Address="0x005a591e" Value="75e9" />
+            <Line Type="bytes" Address="0x005a59c2" Value="eb0cf390eb089090909090909090" />
+            <Line Type="bytes" Address="0x005a59e3" Value="75df" />
+            <Line Type="bytes" Address="0x005a5d68" Value="eb06f390eb029090" />
+            <Line Type="bytes" Address="0x005a5d83" Value="75e5" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.0 - Shadow range 75 percent" Note="Experimental visual quality option. Scales three published shadow clipping ranges after scene evaluation; retains original bounds. Executable-page padding checked by launcher. Requires compatible loader. No gameplay FPS benefit measured. Do not combine with shadows OFF." Author="Codex - local binary analysis" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x007bd500" Value="c57828dec5c2593d64000000c5e2591d5c000000c5d2592d54000000c4c17a10b680020000c5c8573553000000c5c25ffec5e25fdec5d25feec4c17a10b690020000c5c8573536000000c5c25dfec5e25ddec5d25deec57829de488d054fd90a00e97a46dbff909090909090909090900000403f90909090909090909090909000000080000000800000008000000080" />
+            <Line Type="bytes" Address="0x00571bd9" Value="e922b924009090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.0 - Shadow range 50 percent" Note="Experimental visual quality option. Scales three published shadow clipping ranges after scene evaluation; retains original bounds. Executable-page padding checked by launcher. Requires compatible loader. No gameplay FPS benefit measured. Do not combine with shadows OFF." Author="Codex - local binary analysis" PatchVer="1.0" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x007bd500" Value="c57828dec5c2593d64000000c5e2591d5c000000c5d2592d54000000c4c17a10b680020000c5c8573553000000c5c25ffec5e25fdec5d25feec4c17a10b690020000c5c8573536000000c5c25dfec5e25ddec5d25deec57829de488d054fd90a00e97a46dbff909090909090909090900000003f90909090909090909090909000000080000000800000008000000080" />
+            <Line Type="bytes" Address="0x00571bd9" Value="e922b924009090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.1 - Particles soft OFF" Note="Selects the game native diffuse/specular variants without soft depth intersections. Keeps emitters, lifetime, motion-particle variant, lighting and blending selection. Visual quality tradeoff. Synthetic CPU tests only; gameplay and FPS unmeasured." Author="Codex - local binary analysis" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x0059d9af" Value="31c090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.1 - Particles distortion OFF" Note="Disables only PS3_RF_DuDvShift material selection, taking its native zero-property path. Keeps PS3_RF_DuDvShift1 motion-particle selection and other feature flags. Visual quality tradeoff. Synthetic CPU tests only; gameplay and FPS unmeasured." Author="Codex - local binary analysis" PatchVer="1.1" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x0059d713" Value="c5f82ec0" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.2 - Automatic particle emission 75 percent" Note="Scales automatic visual-emitter rate to 75% before native variance, distance, fractional accumulation and birth spacing. Global: may reduce combat effects. Manual emissions bypassing this routine remain unchanged. Keeps existing particles, lifetime, materials and blending. Requires Astra E10. CPU fixture tests only; visual result and FPS unmeasured. Not a quality-preserving optimization." Author="Codex - local binary analysis" PatchVer="1.2" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00591ae5" Value="e916bb22009090909090" />
+            <Line Type="bytes" Address="0x007bd600" Value="c4c17a598c24c4010000c5f2590d0a000000e9d844ddff90909090900000403f" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.2 - Automatic particle emission 50 percent" Note="Scales automatic visual-emitter rate to 50% before native variance, distance, fractional accumulation and birth spacing. Global: may reduce combat effects. Manual emissions bypassing this routine remain unchanged. Keeps existing particles, lifetime, materials and blending. Requires Astra E10. CPU fixture tests only; visual result and FPS unmeasured. Not a quality-preserving optimization." Author="Codex - local binary analysis" PatchVer="1.2" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00591ae5" Value="e916bb22009090909090" />
+            <Line Type="bytes" Address="0x007bd600" Value="c4c17a598c24c4010000c5f2590d0a000000e9d844ddff90909090900000003f" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.3 - SSAO OFF - native preparation retained" Note="Retains native preparation/depth pass and final render-target/state restoration. Skips occlusion evaluation, two filtering passes and final color multiplication. Five native draws become one. Removes ambient occlusion: visual tradeoff. Requires Astra E10. CPU control-flow fixture only; GPU, gameplay and FPS unmeasured." Author="Codex - local binary analysis" PatchVer="1.3" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x0060b6a8" Value="e9d31f1b00" />
+            <Line Type="bytes" Address="0x007bd680" Value="498b3fc74774ffffffffbe0f000000e8bc5edeffc68598fdffffffc68599fdffffff498b3f31d24c89f6e851cfdeffc685a8fdffff00c685aafdffff08c685acfdffff008a85b3fdffff24c30c208885b3fdffff498b3f31d2488db598fdffffe81bcfdeff4d89e7498b47384c8b7008e982e8e4ff" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.4 - Native half-resolution particle buffers" Note="Selects native mode 1 when the adaptive publisher chooses ordinary mode 0/1. Keeps forced-off guards, owner overrides, cooldown and special modes. Native resource construction uses half-size particle color/depth buffers and the original compositor. No emission/lifetime change and no HDR/exposure resize. Can soften particle edges. Requires Astra E10. Synthetic CPU tests only; FPS/pixels unmeasured." Author="Codex - local binary analysis" PatchVer="1.4" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x00598e08" Value="eb4b90" />
+            <Line Type="bytes" Address="0x00598e55" Value="e9e6482200909090909090" />
+            <Line Type="bytes" Address="0x007bd740" Value="4183ff01770641bf0100000045893ee9b7b6ddff" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.5 - Exact SIMD geometry weights" Note="Packs four exact F32 skin-weight divisions in native geometry preparation. No reciprocal approximation, FMA, LOD/distance cutoff, geometry removal or quality setting change. 2304 native differential cases passed, including MXCSR flags and special floats. Synthetic CPU routine benchmark only; gameplay and FPS unmeasured. Requires Astra E10." Author="Codex - local binary analysis" PatchVer="1.5" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x5c094f" Value="c4e2793140f6c5f970c84ec5f1fec8c5f970d1b1c5f1fecac5f85bc0c5f85bc9c5f85ec1c57970d000c57970d855c57970c8aac57970c0ff9090909090909090909090909090" />
+        </PatchList>
+    </Metadata>
+    <Metadata Title="God of War III Remastered" Name="Astra v1.6 - Authored empty-far LOD threshold 75 percent" Note="Only authored two-stage LODs with a nonempty first threshold exactly 100.0 and an empty last 2^31 sentinel stage: changes first threshold to 75.0 before native transition construction. Keeps single-stage models, geometry, special layouts and native fade logic. Objects can disappear earlier. No guarantee of decorative-only classification; no lower-detail mesh is generated. In the sampled assets, 85 groups in 16 OLY300 models qualify. Gameplay and FPS unmeasured. Requires Astra E10." Author="Codex - local binary analysis" PatchVer="1.6" AppVer="01.02" AppElf="eboot.bin" isEnabled="false">
+        <PatchList>
+            <Line Type="bytes" Address="0x7bd800" Value="c4a17a102419509c41807d020275364585f6753142813c190000c84275276642837c190400741e496345084c01e881380000004f750f66837804007508c5da59250b0000009d58e9fd0de0ff909090900000403f" />
+            <Line Type="bytes" Address="0x5be643" Value="e9b8f11f0090" />
+        </PatchList>
+    </Metadata>
+</Patch>

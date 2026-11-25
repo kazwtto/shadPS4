@@ -1,0 +1,51 @@
+[package]
+name = "gow3-launcher"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Launcher Fluent Design para God of War III Remastered (CUSA01623 / 01.02) no shadPS4"
+license = "MIT"
+
+[dependencies]
+aes = "0.8"
+anyhow = "1"
+chrono = "0.4"
+discord-rich-presence = "1.1"
+image = { version = "0.25", default-features = false, features = ["png"] }
+open = "5"
+rfd = "0.15"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+sha2 = "0.10"
+slint = { version = "1.18.1", default-features = false, features = ["std", "backend-winit", "renderer-software", "accessibility", "compat-1-2"] }
+uuid = { version = "1", features = ["v4"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",
+    "Win32_Networking_WinHttp",
+    "Win32_Security",
+    "Win32_Storage_FileSystem",
+    "Win32_System_Diagnostics_ToolHelp",
+    "Win32_System_IO",
+    "Win32_System_Pipes",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
+[build-dependencies]
+slint-build = "1.18.1"
+
+[profile.dev]
+debug = 0
+incremental = false
+
+[profile.release]
+opt-level = 2
+lto = "thin"
+codegen-units = 1
+strip = true
+
+[profile.release.package.gow3-launcher]
+opt-level = 1
+codegen-units = 16

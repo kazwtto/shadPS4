@@ -1,0 +1,1269 @@
+import { Theme } from "theme.slint";
+import {
+    Surface, FxButton, FxIconButton, FxNavItem, FxToggleCard,
+    FxStepRow, FxFieldRow, FxPageHeading, FxSettingRow, FxSettingsTab,
+    FxStat, FxTrophyRow
+} from "components.slint";
+import { FxComboBox as ComboBox } from "combobox.slint";
+import { LineEdit, ListView, ScrollView, ProgressIndicator, Palette, Slider } from "std-widgets.slint";
+
+export struct ToggleItem {
+    title: string,
+    subtitle: string,
+    badge: string,
+    selected: bool,
+    kind: int,
+    section: int,
+    available: bool,
+}
+
+export struct StepItem {
+    title: string,
+    detail: string,
+    done: bool,
+}
+
+export struct TrophyItem {
+    title: string,
+    detail: string,
+    grade: string,
+    grade-kind: int,
+    unlocked: bool,
+    hidden-state: bool,
+    icon: image,
+    has-icon: bool,
+}
+
+export struct BuildItem {
+    name: string,
+    detail: string,
+    version: string,
+    selected: bool,
+}
+
+export component AppWindow inherits Window {
+    title: tr-s[0];
+    icon: @image-url("icons/app.svg");
+    // Fundo opaco do próprio Window: se o primeiro quadro vier incompleto, a
+    // janela nunca aparece transparente por cima do que está atrás dela.
+    background: Theme.bg;
+    default-font-family: Theme.font;
+    default-font-size: 14px;
+    preferred-width: 960px;
+    preferred-height: 660px;
+    min-width: 800px;
+    min-height: 560px;
+
+    // Navigation and operation state
+    in-out property <int> page: 0;
+    // O bloco da marca na sidebar fica fora do layout enquanto isto for falso.
+    property <bool> show-sidebar-brand: false;
+    // Linhas que ficam fora do layout (equivalente a display:none).
+    property <bool> show-hidden-options: false;
+    // O perfil tambem nao aparece na pagina inicial: a escolha fica no chevron
+    // do botao de iniciar e em Ajustes.
+    property <bool> show-home-profile: false;
+    in-out property <bool> profile-menu-open: false;
+    in-out property <bool> busy: false;
+    in-out property <bool> running: false;
+    in-out property <int> state-kind: 0;
+    in-out property <string> state-label: "Pronto";
+    in-out property <string> status-message: "Pronto para começar.";
+    in-out property <string> status-detail: "Seus arquivos originais não são alterados.";
+    in-out property <string> page-title: "Início";
+    in-out property <string> launch-label: "Iniciar jogo";
+    // Missing paths or an unsupported GPU mode are explained when the user
+    // clicks; the button itself only reflects whether a session can start.
+    out property <bool> launch-enabled: !root.busy && !root.running;
+    in-out property <string> verification-label: "Ainda não verificado";
+    in-out property <string> verification-short: "Pendente";
+    in-out property <string> last-session-label: "Nenhuma sessão nesta instalação.";
+    in-out property <string> memory-label: "Memória consultada ao iniciar";
+    in-out property <string> memory-short: "—";
+    in-out property <string> memory-detail: "Memória não consultada";
+    in-out property <string> session-meta: "Nenhuma execução";
+    in-out property <string> log-text: "O painel de logs aparece aqui quando o emulador iniciar.\n";
+    in-out property <[string]> log-lines;
+    in-out property <bool> can-recover: false;
+    in-out property <bool> setup-complete: false;
+    in-out property <int> readiness: 0;
+    in-out property <string> readiness-label: "0 de 3 etapas";
+    in-out property <[StepItem]> steps;
+
+    // Troféus lidos de ambiente/user em src/trophies.rs; a página é somente leitura.
+    in-out property <[TrophyItem]> trophy-items;
+    in-out property <int> trophy-filter: 0;
+    in-out property <string> trophy-subtitle: "";
+    in-out property <string> trophy-empty: "";
+    in-out property <string> trophy-total-label: "0";
+    in-out property <string> trophy-unlocked-label: "0";
+    in-out property <string> trophy-locked-label: "0";
+    in-out property <string> trophy-percent-label: "—";
+    in-out property <bool> trophy-refresh-enabled: true;
+
+    in-out property <int> patch-page: 0;
+    in-out property <int> settings-tab: 0;
+    // Textos traduzidos por src/i18n.rs, na ordem de assets/i18n_keys.json.
+    in-out property <[string]> tr-s;
+    // Builds do repositório: lista e seleção.
+    in-out property <string> builds-status: "";
+    in-out property <[BuildItem]> builds;
+    in-out property <string> selected-build: "";
+    // Atualizações publicadas no repositório.
+    in-out property <bool> update-available: false;
+    in-out property <string> update-title: "";
+    in-out property <string> update-detail: "";
+    in-out property <string> update-status: "";
+    in-out property <bool> update-downloadable: false;
+    in-out property <bool> auto-update-check: true;
+    // Idioma do launcher: 0 segue o idioma do console.
+    in-out property <int> launcher-language: 0;
+    in-out property <[string]> launcher-language-names;
+    in-out property <int> experiment-tab: 0;
+    in-out property <int> shadow-index: 0;
+    in-out property <int> emission-index: 0;
+    in-out property <int> gpu-mode: 0;
+    in-out property <bool> lazy-cache: false;
+    in-out property <bool> disable-animations: false;
+    in-out property <bool> fluid-enabled: false;
+    // Atividade do Discord: desligada por padrão.
+    in-out property <bool> discord-presence: false;
+    in property <image> fluid-image;
+    in-out property <bool> gpu-supported: false;
+    in-out property <string> gpu-compatibility: "Selecione o executável para conferir compatibilidade.";
+    callback trophy-refresh();
+    callback trophy-filter-set(int);
+    callback preferences-changed();
+    callback group-picked(string, int);
+
+    // Paths and preferences
+    in-out property <string> base-path: "";
+    in-out property <string> update-path: "";
+    in-out property <string> executable-path: "";
+    in-out property <string> data-path: "";
+    // Per-field path check: 0 empty, 1 found, 2 not found.
+    in-out property <int> base-state: 0;
+    in-out property <int> update-state: 0;
+    in-out property <int> executable-state: 0;
+    in-out property <bool> paths-dirty: false;
+    in-out property <bool> capture-enabled: false;
+    in-out property <bool> observed-clock: false;
+    in-out property <bool> fps-120-selected: false;
+    in-out property <int> launch-mode: 0;
+
+    // Opções do ShadPS4 para CUSA01623, gravadas por src/emulator_config.rs em
+    // ambiente/user/custom_configs/CUSA01623.json. Combos carregam um índice de
+    // exibição; campos numéricos carregam o texto e são validados ao aplicar.
+    in-out property <int> cfg-console-language: 0;
+    in-out property <float> cfg-volume-value: 100;
+    property <bool> cfg-volume-pending: false;
+    in-out property <bool> cfg-show-splash: false;
+    in-out property <int> cfg-audio-backend: 0;
+    in-out property <int> cfg-display-mode: 0;
+    in-out property <int> cfg-present-mode: 0;
+    in-out property <string> cfg-window-width: "1280";
+    in-out property <string> cfg-window-height: "720";
+    in-out property <bool> cfg-hdr: false;
+    in-out property <int> cfg-anti-aliasing: 0;
+    in-out property <int> cfg-upscaler: 0;
+    in-out property <int> cfg-sharpening: 0;
+    in-out property <string> cfg-rcas: "0.25";
+    in-out property <bool> cfg-motion-controls: true;
+    in-out property <bool> cfg-background-controller: false;
+    in-out property <int> cfg-cursor-state: 1;
+    in-out property <string> cfg-cursor-timeout: "5";
+    in-out property <string> cfg-extra-dmem: "0";
+    in-out property <string> cfg-dmem-detail: "";
+    in-out property <string> cfg-app0-bandwidth: "0";
+    in-out property <string> cfg-app0-detail: "Ilimitado";
+    in-out property <bool> cfg-app0-time-stretching: false;
+    in-out property <int> cfg-readbacks: 0;
+    in-out property <bool> cfg-readback-linear: false;
+    in-out property <bool> cfg-direct-memory: false;
+    in-out property <bool> cfg-nv-raw-access: false;
+    in-out property <bool> cfg-force-ubo: false;
+    in-out property <int> cfg-red-zone: 0;
+    in-out property <bool> cfg-devkit: false;
+    in-out property <bool> cfg-neo: false;
+    in-out property <bool> cfg-shadnet: false;
+    in-out property <bool> cfg-network-connected: false;
+    in-out property <bool> cfg-pipeline-cache: false;
+    in-out property <bool> cfg-pipeline-cache-archived: false;
+    in property <bool> cfg-windows: true;
+    in-out property <[string]> cfg-languages;
+    in-out property <[string]> cfg-audio-backends;
+    in-out property <[string]> cfg-display-modes;
+    in-out property <[string]> cfg-present-modes;
+    in-out property <[string]> cfg-anti-aliasing-modes;
+    in-out property <[string]> cfg-upscalers;
+    in-out property <[string]> cfg-sharpenings;
+    in-out property <[string]> cfg-cursor-states;
+    in-out property <[string]> cfg-readbacks-modes;
+    in-out property <[string]> cfg-red-zones;
+    // Editar só é possível com o launcher parado, sem operação em curso e sem
+    // sessão ou diário pendente de restauração.
+    out property <bool> emulator-editable: !root.busy && !root.running && !root.can-recover;
+
+    // Selection and summaries
+    in-out property <[string]> profile-names;
+    in-out property <int> profile-index: 0;
+    private property <bool> profile-picker-enabled: !root.busy && !root.running && root.profile-names.length > 0;
+    in-out property <string> profile-blurb: "";
+    in-out property <string> summary-profile: "Base60";
+    in-out property <string> summary-vblank: "60 Hz";
+    in-out property <string> summary-dmem: "0 MB";
+    in-out property <string> summary-patches: "0";
+    in-out property <[string]> resolution-names;
+    in-out property <int> resolution-index: 0;
+    in-out property <string> resolution-detail: "";
+    in-out property <[ToggleItem]> features;
+    in-out property <[ToggleItem]> experiments;
+
+    // Saving a custom profile
+    in-out property <bool> save-profile-open: false;
+    in-out property <string> new-profile-name: "";
+    in-out property <string> profile-save-error: "";
+
+    // About
+    in-out property <string> app-version: "0.1.0";
+    in-out property <string> catalog-version: "1.0";
+
+    callback navigate(int);
+    callback launch-requested();
+    callback cancel-requested();
+    callback verify-requested();
+    callback browse(int);
+    callback path-changed();
+    callback resolution-picked(string);
+    callback feature-toggled(int);
+    callback experiment-toggled(int);
+    callback profile-picked(string);
+    callback open-save-profile();
+    callback close-save-profile();
+    callback confirm-save-profile();
+    callback save-settings();
+    callback discard-paths();
+    callback recovery-requested();
+    callback discard-recovery();
+    callback import-saves-requested();
+    callback open-data();
+    callback open-session();
+    callback open-logs();
+    callback set-launch-mode(int);
+    callback capture-set(bool);
+    callback observed-set(bool);
+    callback clear-log();
+    callback emulator-toggle(string, bool);
+    callback emulator-index(string, int);
+    callback emulator-number(string, string);
+    callback volume-set(float);
+    callback builds-refresh();
+    callback build-picked(int);
+    callback update-check-now();
+    callback update-download();
+    callback update-dismiss();
+    callback launcher-language-set(int);
+
+    init => {
+        Palette.color-scheme = ColorScheme.dark;
+
+    }
+
+    // ------------------------------------------------------------------ motion
+    // One animated progress value drives a whole transition. Restarting a motion
+    // first resets it with a 0 ms duration and then re-arms it, so rapid
+    // navigation never leaves a half-faded page behind.
+    out property <bool> motion-active: root.page-moving || root.panel-moving
+        || (root.dialog-progress > 0.001 && root.dialog-progress < 0.999);
+    private property <bool> page-moving: false;
+    private property <float> page-progress: 1;
+    private property <int> page-from: 0;
+    private property <int> page-to: 0;
+    private property <int> page-direction: 1;
+    private property <bool> panel-moving: false;
+    private property <float> panel-progress: 1;
+    private property <float> dialog-progress: 0;
+    private property <float> profile-menu-progress: 0;
+
+    animate page-progress {
+        duration: root.page-moving && Theme.animations-enabled ? Theme.motion-page : 0ms;
+        easing: cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    animate panel-progress {
+        duration: root.panel-moving && Theme.animations-enabled ? Theme.motion-base : 0ms;
+        easing: cubic-bezier(0.2, 0, 0, 1);
+    }
+    animate dialog-progress {
+        duration: Theme.animations-enabled ? Theme.motion-dialog : 0ms;
+        easing: cubic-bezier(0.2, 0, 0, 1);
+    }
+    animate profile-menu-progress {
+        duration: Theme.animations-enabled ? Theme.motion-base : 0ms;
+        easing: cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    page-motion := Timer {
+        interval: Theme.motion-page + 32ms;
+        running: false;
+        triggered => { root.page-moving = false; }
+    }
+    panel-motion := Timer {
+        interval: Theme.motion-base + 40ms;
+        running: false;
+        triggered => { root.panel-moving = false; }
+    }
+
+    // Pages cross-fade while sliding: the leaving page accelerates away, then
+    // the arriving page decelerates into place from the side it came from.
+    function page-shift(index: int) -> length {
+        if (!root.page-moving) {
+            return 0px;
+        }
+        if (index == root.page-to) {
+            return Theme.motion-travel * (root.page-direction * (1 - root.page-progress));
+        }
+        if (index == root.page-from) {
+            return -Theme.motion-travel * (root.page-direction * root.page-progress * 0.7);
+        }
+        return 0px;
+    }
+
+    function page-fade(index: int) -> float {
+        if (!root.page-moving) {
+            return index == root.page ? 1 : 0;
+        }
+        if (index == root.page-to) {
+            return ((root.page-progress - 0.34) / 0.66).clamp(0.0, 1.0);
+        }
+        if (index == root.page-from) {
+            return (1 - root.page-progress / 0.42).clamp(0.0, 1.0);
+        }
+        return 0;
+    }
+
+    function page-shown(index: int) -> bool {
+        return index == root.page || (root.page-moving && index == root.page-from);
+    }
+
+    function start-page-motion(target: int) {
+        if (!Theme.animations-enabled || root.disable-animations) {
+            root.page-moving = false;
+            root.page-progress = 1;
+            root.page-from = target;
+            root.page-to = target;
+            page-motion.stop();
+            return;
+        }
+        if (root.page-moving && target == root.page-to) {
+            return;
+        }
+        root.page-moving = false;
+        root.page-progress = 0;
+        root.page-direction = target > root.page-to ? 1 : -1;
+        root.page-from = root.page-to;
+        root.page-to = target;
+        root.page-moving = true;
+        root.page-progress = 1;
+        page-motion.stop();
+        page-motion.start();
+    }
+
+    // Sub-tabs swap their content instantly; a short fade and a few pixels of
+    // travel carry the eye across the change without waiting for the old panel.
+    function start-panel-motion() {
+        root.panel-moving = false;
+        root.panel-progress = 0;
+        if (!Theme.animations-enabled || root.disable-animations) {
+            root.panel-progress = 1;
+            panel-motion.stop();
+            return;
+        }
+        root.panel-moving = true;
+        root.panel-progress = 1;
+        panel-motion.stop();
+        panel-motion.start();
+    }
+
+    changed disable-animations => { Theme.animations-enabled = !root.disable-animations; }
+    changed page => { root.start-page-motion(root.page); }
+    changed patch-page => { root.start-panel-motion(); }
+    changed experiment-tab => { root.start-panel-motion(); }
+    changed settings-tab => { root.start-panel-motion(); }
+    changed save-profile-open => { root.dialog-progress = root.save-profile-open ? 1 : 0; }
+    changed profile-menu-open => { root.profile-menu-progress = root.profile-menu-open ? 1 : 0; }
+
+    // O volume só é gravado quando o slider para de se mover.
+    Timer {
+        interval: 300ms;
+        running: root.cfg-volume-pending;
+        triggered => { root.cfg-volume-pending = false; root.volume-set(root.cfg-volume-value); }
+    }
+
+    FocusScope {
+        key-pressed(event) => { if event.text == Key.Tab { Theme.keyboard-navigation = true; } return reject; }
+    Rectangle {
+        background: Theme.sidebar;
+        HorizontalLayout {
+            spacing: 0px;
+            padding-top: 8px;
+            padding-right: 8px;
+            padding-bottom: 8px;
+
+            Rectangle {
+                width: 184px;
+                background: transparent;
+                VerticalLayout {
+                    padding: 12px;
+                    padding-top: 10px;
+                    spacing: 4px;
+                    // Elemento condicional: é o equivalente a display:none no Slint.
+                    // O bloco continua aqui, apenas fora do layout enquanto desligado.
+                    if root.show-sidebar-brand : Rectangle {
+                        height: 68px;
+                        Image { x: 8px; y: 12px; width: 32px; height: 32px; source: @image-url("icons/app.svg"); }
+                        Text { vertical-stretch: 0; x: 50px; y: 20px; text: tr-s[1]; color: Theme.text; font-size: 14px; font-weight: 600; }
+                    }
+                    FxNavItem { label: tr-s[2]; icon: @image-url("icons/home.svg"); selected: root.page == 0; clicked => { root.navigate(0); } }
+                    FxNavItem { label: tr-s[3]; icon: @image-url("icons/patches.svg"); selected: root.page == 1; clicked => { root.navigate(1); } }
+                    FxNavItem { label: tr-s[4]; icon: @image-url("icons/activity.svg"); selected: root.page == 2; clicked => { root.navigate(2); } }
+                    FxNavItem { label: tr-s[5]; icon: @image-url("icons/trophy.svg"); selected: root.page == 3; clicked => { root.navigate(3); } }
+                    Rectangle { vertical-stretch: 1; background: transparent; }
+                    Rectangle {
+                        height: 34px;
+                        border-radius: 4px;
+                        background: discord-area.pressed ? #FFFFFF10 : discord-area.has-hover ? #FFFFFF08 : transparent;
+                        animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                        Image {
+                            x: 12px;
+                            y: (parent.height - self.height) / 2;
+                            width: 18px;
+                            height: 18px;
+                            source: @image-url("icons/discord.svg");
+                            colorize: root.discord-presence ? Theme.accent : Theme.text-tertiary;
+                            animate colorize { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                        }
+                        discord-area := TouchArea {
+                            mouse-cursor: pointer;
+                            width: parent.width;
+                            height: parent.height;
+                            clicked => { root.discord-presence = !root.discord-presence; root.preferences-changed(); }
+                        }
+                        Rectangle {
+                            x: parent.width - 46px;
+                            y: (parent.height - 18px) / 2;
+                            width: 34px;
+                            height: 18px;
+                            border-radius: 9px;
+                            background: root.discord-presence ? Theme.accent : #FFFFFF15;
+                            animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                            Rectangle {
+                                width: 12px;
+                                height: 12px;
+                                y: 3px;
+                                x: root.discord-presence ? 19px : 3px;
+                                border-radius: 6px;
+                                background: Theme.text;
+                                animate x { duration: Theme.animations-enabled ? Theme.motion-base : 0ms; easing: cubic-bezier(0.2, 0, 0, 1); }
+                            }
+                        }
+                    }
+                    FxNavItem { label: tr-s[6]; icon: @image-url("icons/settings.svg"); selected: root.page == 4; clicked => { root.navigate(4); } }
+                    Text { vertical-stretch: 0; text: "v" + root.app-version; color: Theme.text-tertiary; font-size: 12px; }
+                }
+            }
+
+            Rectangle {
+                background: Theme.bg;
+                border-radius: 8px;
+                border-width: 1px;
+                border-color: Theme.stroke;
+                clip: true;
+                // Slow fluid glow behind the pages; its alpha fades out upward
+                // so it merges with the card instead of ending on a hard line.
+                Image {
+                    x: 0px;
+                    y: parent.height - 196px;
+                    width: parent.width;
+                    height: 196px;
+                    source: root.fluid-image;
+                    opacity: root.fluid-enabled && !root.disable-animations ? 1 : 0;
+                    visible: self.opacity > 0.001;
+                    animate opacity { duration: Theme.animations-enabled ? 240ms : 0ms; }
+                }
+                VerticalLayout {
+                    spacing: 0px;
+                    page-area := Rectangle {
+                        vertical-stretch: 1;
+                        background: transparent;
+                        clip: true;
+
+                        ScrollView {
+                            visible: root.page-shown(0);
+                            x: root.page-shift(0);
+                            opacity: root.page-fade(0);
+                            horizontal-scrollbar-policy: always-off;
+                            VerticalLayout {
+                                width: page-area.width;
+                                height: self.min-height;
+                                x: 0px;
+                                y: 0px;
+                                alignment: start;
+                                padding: 20px;
+                                spacing: 16px;
+                                HorizontalLayout {
+                                    spacing: 16px;
+                                    FxPageHeading { title: tr-s[2]; subtitle: tr-s[7]; horizontal-stretch: 1; }
+                                    VerticalLayout {
+                                        horizontal-stretch: 0;
+                                        alignment: start;
+                                        FxButton { text: tr-s[3]; icon: @image-url("icons/patches.svg"); clicked => { root.navigate(1); } }
+                                    }
+                                }
+                                if root.update-available : Surface {
+                                    HorizontalLayout {
+                                        padding: 12px;
+                                        spacing: 10px;
+                                        Text { vertical-stretch: 0; vertical-alignment: center; horizontal-stretch: 1; text: root.update-title; color: Theme.text; font-size: 13px; wrap: word-wrap; }
+                                        FxButton { text: tr-s[8]; primary: true; clicked => { root.update-download(); } }
+                                        FxButton { text: tr-s[9]; clicked => { root.update-dismiss(); } }
+                                    }
+                                }
+                                Surface {
+                                    VerticalLayout {
+                                        padding: 0px;
+                                        spacing: 0px;
+                                        if root.show-home-profile : FxSettingRow {
+                                            title: tr-s[10];
+                                            subtitle: root.profile-blurb;
+                                            control-width: 200px;
+                                            ComboBox { model: root.profile-names; current-index <=> root.profile-index; selected(value) => { root.profile-picked(value); } }
+                                        }
+                                        if root.show-home-profile : Rectangle { height: 1px; background: Theme.divider; }
+                                        HorizontalLayout {
+                                            padding: 16px;
+                                            spacing: 12px;
+                                            Text { vertical-stretch: 0; text: root.summary-patches + tr-s[11] + root.summary-vblank + tr-s[12] + root.summary-dmem; color: Theme.text-secondary; font-size: 12px; horizontal-stretch: 1; vertical-alignment: center; wrap: word-wrap; }
+                                        }
+                                    }
+                                }
+                                if !root.setup-complete : Surface {
+                                    VerticalLayout {
+                                        padding: 16px;
+                                        spacing: 4px;
+                                        Text { vertical-stretch: 0; text: tr-s[13]; color: Theme.text; font-size: 14px; font-weight: 600; }
+                                        for item[index] in root.steps : FxStepRow {
+                                            title: item.title; detail: item.detail; done: item.done;
+                                            activated => { if index == 0 { root.navigate(4); } else if index == 1 { root.verify-requested(); } else { root.launch-requested(); } }
+                                        }
+                                    }
+                                }
+                                if root.setup-complete : Surface {
+                                    FxSettingRow {
+                                        title: tr-s[14]; subtitle: root.verification-label; control-width: 0px;
+                                    }
+                                }
+                                HorizontalLayout {
+                                    padding-left: 4px; padding-right: 4px;
+                                    spacing: 10px;
+                                    Text {
+                                        vertical-stretch: 0; vertical-alignment: center; horizontal-stretch: 1;
+                                        text: tr-s[15] + root.last-session-label;
+                                        color: Theme.text-tertiary; font-size: 11px; overflow: elide;
+                                    }
+                                    Rectangle {
+                                        horizontal-stretch: 0; width: 84px; height: 18px;
+                                        background: transparent;
+                                        Text {
+                                            x: 0; y: 0; width: parent.width; height: parent.height;
+                                            text: tr-s[16]; horizontal-alignment: right; vertical-alignment: center;
+                                            color: session-area.has-hover ? Theme.text-secondary : Theme.text-tertiary;
+                                            font-size: 11px;
+                                            animate color { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                                        }
+                                        session-area := TouchArea { mouse-cursor: pointer; clicked => { root.navigate(2); } }
+                                        accessible-role: button;
+                                        accessible-label: tr-s[16];
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: root.page-shown(1);
+                            x: root.page-shift(1);
+                            opacity: root.page-fade(1);
+                            background: transparent;
+                            VerticalLayout {
+                                width: page-area.width;
+                                height: page-area.height;
+                                x: 0px;
+                                y: 0px;
+                                padding: 20px;
+                                spacing: 16px;
+                                HorizontalLayout {
+                                    spacing: 16px;
+                                    VerticalLayout {
+                                        spacing: 6px;
+                                        alignment: center;
+                                        Text { vertical-stretch: 0; text: tr-s[3]; color: Theme.text; font-size: 24px; font-weight: 600; }
+                                        Text { vertical-stretch: 0; text: tr-s[17]; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                                    }
+                                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                                    VerticalLayout {
+                                        horizontal-stretch: 0;
+                                        alignment: center;
+                                        spacing: 4px;
+                                        Text { horizontal-alignment: right; vertical-stretch: 0; text: tr-s[18]; color: Theme.text-secondary; font-size: 11px; }
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            ComboBox { width: 200px; model: root.profile-names; current-index <=> root.profile-index; selected(value) => { root.profile-picked(value); } }
+                                            FxIconButton { icon: @image-url("icons/save.svg"); tooltip: tr-s[19]; clicked => { root.open-save-profile(); } }
+                                        }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: 20px;
+                                    vertical-stretch: 1; min-height: 0px;
+                                    VerticalLayout {
+                                        width: 180px; horizontal-stretch: 0;
+                                        alignment: start; spacing: 6px;
+                                        for label[index] in [tr-s[20], tr-s[21], tr-s[22], tr-s[23]] : FxNavItem {
+                                            label: label;
+                                            icon: index == 0 ? @image-url("icons/monitor.svg") : index == 1 ? @image-url("icons/spark.svg") : index == 2 ? @image-url("icons/settings.svg") : @image-url("icons/flask.svg");
+                                            selected: root.patch-page == index;
+                                            clicked => { root.patch-page = index; }
+                                        }
+                                        // The experiment groups are only relevant inside
+                                        // Experimentos; keep the sidebar compact elsewhere.
+                                        if root.patch-page == 3 : VerticalLayout {
+                                            spacing: 6px; alignment: start;
+                                            Rectangle { height: 1px; background: Theme.divider; }
+                                            FxNavItem {
+                                                label: tr-s[24];
+                                                icon: @image-url("icons/patches.svg");
+                                                selected: root.experiment-tab == 3;
+                                                clicked => { root.patch-page = 3; root.experiment-tab = 3; }
+                                            }
+                                            FxNavItem {
+                                                label: tr-s[25];
+                                                icon: @image-url("icons/monitor.svg");
+                                                selected: root.experiment-tab == 0;
+                                                clicked => { root.patch-page = 3; root.experiment-tab = 0; }
+                                            }
+                                            FxNavItem {
+                                                label: tr-s[26];
+                                                icon: @image-url("icons/spark.svg");
+                                                selected: root.experiment-tab == 1;
+                                                clicked => { root.patch-page = 3; root.experiment-tab = 1; }
+                                            }
+                                            FxNavItem {
+                                                label: tr-s[27];
+                                                icon: @image-url("icons/settings.svg");
+                                                selected: root.experiment-tab == 2;
+                                                clicked => { root.patch-page = 3; root.experiment-tab = 2; }
+                                            }
+                                        }
+                                    }
+                                    // The tab content scrolls inside this pane so the
+                                    // heading, profile and tab list stay put.
+                                    content-scroll := ScrollView {
+                                        vertical-stretch: 1; min-height: 0px;
+                                        horizontal-scrollbar-policy: always-off;
+                                        VerticalLayout {
+                                        width: content-scroll.visible-width;
+                                        spacing: 12px; alignment: start;
+                                        opacity: root.panel-progress;
+                                        padding-left: (1 - root.panel-progress) * 10px;
+                                if root.patch-page == 0 : Surface {
+                                    FxSettingRow {
+                                        title: tr-s[28]; subtitle: root.resolution-detail;
+                                        ComboBox { model: root.resolution-names; current-index <=> root.resolution-index; selected(value) => { root.resolution-picked(value); } }
+                                    }
+                                }
+                                // Gráficos do emulador entram na área Gráfico existente.
+                                if root.patch-page == 0 : Surface {
+                                    VerticalLayout {
+                                        padding: 0px; spacing: 0px;
+                                        FxSettingRow {
+                                            title: tr-s[29]; subtitle: tr-s[30]; control-width: 216px;
+                                            ComboBox { model: root.cfg-display-modes; enabled: root.emulator-editable; current-index <=> root.cfg-display-mode; selected(value) => { root.emulator-index("GPU.display_mode", root.cfg-display-mode); } }
+                                        }
+                                        FxSettingRow {
+                                            title: tr-s[31]; subtitle: tr-s[32]; control-width: 216px;
+                                            ComboBox { model: root.cfg-present-modes; enabled: root.emulator-editable; current-index <=> root.cfg-present-mode; selected(value) => { root.emulator-index("GPU.present_mode", root.cfg-present-mode); } }
+                                        }
+                                        if root.show-hidden-options : FxSettingRow {
+                                            title: tr-s[33]; subtitle: tr-s[34]; control-width: 248px;
+                                            LineEdit { text <=> root.cfg-window-width; enabled: root.emulator-editable; accepted => { root.emulator-number("GPU.window_width", root.cfg-window-width); } }
+                                            FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("GPU.window_width", root.cfg-window-width); } }
+                                        }
+                                        if root.show-hidden-options : FxSettingRow {
+                                            title: tr-s[36]; subtitle: tr-s[37]; control-width: 248px;
+                                            LineEdit { text <=> root.cfg-window-height; enabled: root.emulator-editable; accepted => { root.emulator-number("GPU.window_height", root.cfg-window-height); } }
+                                            FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("GPU.window_height", root.cfg-window-height); } }
+                                        }
+                                        FxToggleCard { title: "HDR"; subtitle: tr-s[38]; selected: root.cfg-hdr; enabled: root.emulator-editable; kind: 1; toggled => { root.emulator-toggle("GPU.hdr_allowed", !root.cfg-hdr); } }
+                                        FxSettingRow {
+                                            title: tr-s[39]; subtitle: tr-s[40]; control-width: 216px;
+                                            ComboBox { model: root.cfg-anti-aliasing-modes; enabled: root.emulator-editable; current-index <=> root.cfg-anti-aliasing; selected(value) => { root.emulator-index("GPU.anti_aliasing", root.cfg-anti-aliasing); } }
+                                        }
+                                        FxSettingRow {
+                                            title: tr-s[41]; subtitle: tr-s[42]; control-width: 216px;
+                                            ComboBox { model: root.cfg-upscalers; enabled: root.emulator-editable; current-index <=> root.cfg-upscaler; selected(value) => { root.emulator-index("GPU.upscaler", root.cfg-upscaler); } }
+                                        }
+                                        FxSettingRow {
+                                            title: tr-s[43]; subtitle: tr-s[44]; control-width: 216px;
+                                            ComboBox { model: root.cfg-sharpenings; enabled: root.emulator-editable; current-index <=> root.cfg-sharpening; selected(value) => { root.emulator-index("GPU.sharpening", root.cfg-sharpening); } }
+                                        }
+                                        if root.cfg-sharpening == 1 : FxSettingRow {
+                                            title: tr-s[45]; subtitle: tr-s[46]; control-width: 248px;
+                                            LineEdit { text <=> root.cfg-rcas; enabled: root.emulator-editable; accepted => { root.emulator-number("GPU.rcas_attenuation", root.cfg-rcas); } }
+                                            FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("GPU.rcas_attenuation", root.cfg-rcas); } }
+                                        }
+                                    }
+                                }
+                                if root.patch-page == 1 : Surface {
+                                    VerticalLayout {
+                                        spacing: 0px;
+                                        for item[index] in root.features : FxToggleCard {
+                                            title: item.title; subtitle: item.subtitle; selected: item.selected; kind: item.kind;
+                                            enabled: !root.busy;
+                                            toggled => { root.feature-toggled(index); }
+                                        }
+                                    }
+                                }
+                                // Input é o único item novo da navegação interna de Ajustes.
+                                if root.patch-page == 2 : Surface {
+                                    VerticalLayout {
+                                        padding: 0px; spacing: 0px;
+                                        FxToggleCard { title: tr-s[47]; subtitle: tr-s[48]; selected: root.cfg-motion-controls; enabled: root.emulator-editable; kind: 1; toggled => { root.emulator-toggle("Input.motion_controls_enabled", !root.cfg-motion-controls); } }
+                                        FxToggleCard { title: tr-s[49]; subtitle: tr-s[50]; selected: root.cfg-background-controller; enabled: root.emulator-editable; kind: 1; toggled => { root.emulator-toggle("Input.background_controller_input", !root.cfg-background-controller); } }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxSettingRow {
+                                            title: tr-s[51]; subtitle: tr-s[52]; control-width: 216px;
+                                            ComboBox { model: root.cfg-cursor-states; enabled: root.emulator-editable; current-index <=> root.cfg-cursor-state; selected(value) => { root.emulator-index("Input.cursor_state", root.cfg-cursor-state); } }
+                                        }
+                                        if root.cfg-cursor-state == 1 : FxSettingRow {
+                                            title: tr-s[53]; subtitle: tr-s[54]; control-width: 248px;
+                                            LineEdit { text <=> root.cfg-cursor-timeout; enabled: root.emulator-editable; accepted => { root.emulator-number("Input.cursor_hide_timeout", root.cfg-cursor-timeout); } }
+                                            FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("Input.cursor_hide_timeout", root.cfg-cursor-timeout); } }
+                                        }
+                                    }
+                                }
+                                if root.patch-page == 3 : VerticalLayout {
+                                    spacing: 12px;
+                                    if root.experiment-tab == 0 : Surface {
+                                        FxSettingRow {
+                                            title: tr-s[55]; subtitle: tr-s[56];
+                                            ComboBox { model: [tr-s[57], tr-s[58], tr-s[59], tr-s[60]]; current-index: root.shadow-index; enabled: !root.busy; selected(value) => { root.group-picked("shadow_quality", self.current-index); } }
+                                        }
+                                    }
+                                    if root.experiment-tab == 1 : Surface {
+                                        FxSettingRow {
+                                            title: tr-s[61]; subtitle: tr-s[62];
+                                            ComboBox { model: [tr-s[63], "75%", "50%"]; current-index: root.emission-index; enabled: !root.busy; selected(value) => { root.group-picked("particle_rate", self.current-index); } }
+                                        }
+                                    }
+                                    if root.experiment-tab != 3 : Surface {
+                                        VerticalLayout {
+                                            padding: 0px; spacing: 0px;
+                                            for item[index] in root.experiments : VerticalLayout {
+                                                if item.section == root.experiment-tab : FxToggleCard {
+                                                    title: item.title; subtitle: item.subtitle; selected: item.selected; kind: item.kind;
+                                                    enabled: item.available && !root.busy;
+                                                    toggled => { root.experiment-toggled(index); }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    if root.experiment-tab == 3 : Surface {
+                                        VerticalLayout {
+                                            padding: 0px; spacing: 0px;
+                                            FxToggleCard { title: tr-s[64]; subtitle: tr-s[65]; selected: root.cfg-pipeline-cache; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("Vulkan.pipeline_cache_enabled", !root.cfg-pipeline-cache); } }
+                                            if root.cfg-pipeline-cache : FxToggleCard { title: tr-s[66]; subtitle: tr-s[67]; selected: root.cfg-pipeline-cache-archived; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("Vulkan.pipeline_cache_archived", !root.cfg-pipeline-cache-archived); } }
+                                            Rectangle { height: 1px; background: Theme.divider; }
+                                            FxSettingRow {
+                                                title: tr-s[68]; subtitle: root.cfg-dmem-detail; control-width: 248px;
+                                                LineEdit { text <=> root.cfg-extra-dmem; enabled: root.emulator-editable; accepted => { root.emulator-number("General.extra_dmem_in_mbytes", root.cfg-extra-dmem); } }
+                                                FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("General.extra_dmem_in_mbytes", root.cfg-extra-dmem); } }
+                                            }
+                                            FxSettingRow {
+                                                title: tr-s[69]; subtitle: tr-s[70] + root.cfg-app0-detail; control-width: 248px;
+                                                LineEdit { text <=> root.cfg-app0-bandwidth; enabled: root.emulator-editable; accepted => { root.emulator-number("General.app0_read_bandwidth_mibps", root.cfg-app0-bandwidth); } }
+                                                FxButton { text: tr-s[35]; enabled: root.emulator-editable; clicked => { root.emulator-number("General.app0_read_bandwidth_mibps", root.cfg-app0-bandwidth); } }
+                                            }
+                                            FxToggleCard { title: tr-s[71]; subtitle: tr-s[72]; selected: root.cfg-app0-time-stretching; enabled: root.emulator-editable && root.cfg-app0-bandwidth != "0"; kind: 2; toggled => { root.emulator-toggle("General.app0_read_disable_time_stretching", !root.cfg-app0-time-stretching); } }
+                                            FxSettingRow {
+                                                title: tr-s[73]; subtitle: tr-s[74]; control-width: 216px;
+                                                ComboBox { model: root.cfg-readbacks-modes; enabled: root.emulator-editable; current-index <=> root.cfg-readbacks; selected(value) => { root.emulator-index("GPU.readbacks_mode", root.cfg-readbacks); } }
+                                            }
+                                            FxToggleCard { title: tr-s[75]; subtitle: tr-s[76]; selected: root.cfg-readback-linear; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("GPU.readback_linear_images_enabled", !root.cfg-readback-linear); } }
+                                            FxToggleCard { title: tr-s[77]; subtitle: tr-s[78]; selected: root.cfg-direct-memory; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("GPU.direct_memory_access_enabled", !root.cfg-direct-memory); } }
+                                            FxToggleCard { title: tr-s[79]; subtitle: tr-s[80]; selected: root.cfg-nv-raw-access; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("Vulkan.use_nv_raw_access_chains", !root.cfg-nv-raw-access); } }
+                                            FxToggleCard { title: tr-s[81]; subtitle: tr-s[80]; selected: root.cfg-force-ubo; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("Vulkan.force_uniform_buffers", !root.cfg-force-ubo); } }
+                                            if root.cfg-windows && root.show-hidden-options : FxSettingRow {
+                                                title: tr-s[82]; subtitle: tr-s[83]; control-width: 216px;
+                                                ComboBox { model: root.cfg-red-zones; enabled: root.emulator-editable; current-index <=> root.cfg-red-zone; selected(value) => { root.emulator-index("WindowsGuestRedZoneProtection.windows_guest_red_zone_protection_mode", root.cfg-red-zone); } }
+                                            }
+                                            if root.show-hidden-options : FxToggleCard { title: tr-s[84]; subtitle: tr-s[85]; selected: root.cfg-devkit; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("General.dev_kit_mode", !root.cfg-devkit); } }
+                                            if root.show-hidden-options : FxToggleCard { title: tr-s[86]; subtitle: tr-s[87]; selected: root.cfg-neo; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("General.neo_mode", !root.cfg-neo); } }
+                                            if root.show-hidden-options : FxToggleCard { title: tr-s[88]; subtitle: tr-s[89]; selected: root.cfg-shadnet; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("General.shad_net_enabled", !root.cfg-shadnet); } }
+                                            if root.show-hidden-options : FxToggleCard { title: tr-s[90]; subtitle: tr-s[91]; selected: root.cfg-network-connected; enabled: root.emulator-editable; kind: 2; toggled => { root.emulator-toggle("General.connected_to_network", !root.cfg-network-connected); } }
+                                        }
+                                    }
+                                    }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: root.page-shown(2);
+                            x: root.page-shift(2);
+                            opacity: root.page-fade(2);
+                            background: transparent;
+                            VerticalLayout {
+                            padding: 24px; spacing: 16px;
+                            FxPageHeading { title: tr-s[4]; subtitle: root.session-meta; }
+                            HorizontalLayout {
+                                spacing: 8px; alignment: start;
+                                FxButton { text: tr-s[92]; icon: @image-url("icons/folder.svg"); clicked => { root.open-session(); } }
+                                FxButton { text: tr-s[93]; clicked => { root.open-logs(); } }
+                                FxButton { text: tr-s[94]; clicked => { root.clear-log(); } }
+                            }
+                            Text { vertical-stretch: 0; text: root.memory-label; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                            Rectangle {
+                                background: Theme.card;
+                                border-radius: 8px;
+                                border-width: 1px;
+                                border-color: Theme.stroke;
+                                vertical-stretch: 1;
+                                log-list := ListView {
+                                    x: 10px; y: 10px;
+                                    width: parent.width - 20px; height: parent.height - 20px;
+                                    horizontal-scrollbar-policy: always-off;
+                                    for line in root.log-lines : Text {
+                                        width: log-list.visible-width;
+                                        min-height: 16px;
+                                        text: line;
+                                        font-family: Theme.mono;
+                                        font-size: 12px;
+                                        color: Theme.text-secondary;
+                                        wrap: word-wrap;
+                                    }
+                                }
+                            }
+                        }
+                        }
+
+                        Rectangle {
+                            visible: root.page-shown(3);
+                            x: root.page-shift(3);
+                            opacity: root.page-fade(3);
+                            background: transparent;
+                            VerticalLayout {
+                                width: page-area.width;
+                                height: page-area.height;
+                                x: 0px;
+                                y: 0px;
+                                padding: 20px; spacing: 16px;
+                                HorizontalLayout {
+                                    spacing: 12px;
+                                    VerticalLayout {
+                                        spacing: 6px;
+                                        alignment: center;
+                                        Text { vertical-stretch: 0; text: tr-s[5]; color: Theme.text; font-size: 24px; font-weight: 600; }
+                                        if root.trophy-subtitle != "" : Text { vertical-stretch: 0; text: root.trophy-subtitle; color: Theme.text-secondary; font-size: 12px; }
+                                    }
+                                    Rectangle { horizontal-stretch: 1; background: transparent; }
+                                    VerticalLayout {
+                                        horizontal-stretch: 0;
+                                        alignment: center;
+                                        HorizontalLayout {
+                                            spacing: 20px;
+                                            FxStat { width: 84px; value: root.trophy-total-label; caption: "Total"; }
+                                            FxStat { width: 84px; value: root.trophy-unlocked-label; caption: "Desbloqueados"; }
+                                            FxStat { width: 84px; value: root.trophy-locked-label; caption: "Restantes"; }
+                                            FxStat { width: 84px; value: root.trophy-percent-label; caption: "Concluídos"; }
+                                            FxIconButton { icon: @image-url("icons/refresh.svg"); tooltip: tr-s[95]; enabled: root.trophy-refresh-enabled; clicked => { root.trophy-refresh(); } }
+                                        }
+                                    }
+                                }
+                                HorizontalLayout {
+                                    spacing: 6px; alignment: start;
+                                    for label[index] in [tr-s[96], tr-s[97], tr-s[98]] : FxSettingsTab {
+                                        label: label;
+                                        selected: root.trophy-filter == index;
+                                        clicked => { root.trophy-filter-set(index); }
+                                    }
+                                }
+                                Rectangle {
+                                    background: Theme.card;
+                                    border-radius: 8px;
+                                    border-width: 1px;
+                                    border-color: Theme.stroke;
+                                    vertical-stretch: 1;
+                                    min-height: 0px;
+                                    clip: true;
+                                    if root.trophy-items.length == 0 : Text {
+                                        x: 16px; y: 16px;
+                                        width: parent.width - 32px;
+                                        text: root.trophy-empty;
+                                        color: Theme.text-secondary;
+                                        font-size: 12px;
+                                        wrap: word-wrap;
+                                    }
+                                    trophy-list := ListView {
+                                        x: 8px; y: 8px;
+                                        width: parent.width - 16px; height: parent.height - 16px;
+                                        horizontal-scrollbar-policy: always-off;
+                                        for item in root.trophy-items : FxTrophyRow {
+                                            hidden-suffix: tr-s[181]; unlocked-label: tr-s[182]; locked-label: tr-s[183];
+                                            width: trophy-list.visible-width;
+                                            title: item.title;
+                                            detail: item.detail;
+                                            grade: item.grade;
+                                            grade-kind: item.grade-kind;
+                                            unlocked: item.unlocked;
+                                            hidden-state: item.hidden-state;
+                                            icon: item.icon;
+                                            has-icon: item.has-icon;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        Rectangle {
+                            visible: root.page-shown(4);
+                            x: root.page-shift(4);
+                            opacity: root.page-fade(4);
+                            background: transparent;
+                            VerticalLayout {
+                                width: page-area.width;
+                                height: page-area.height;
+                                x: 0px;
+                                y: 0px;
+                                padding: 20px; spacing: 16px;
+                                FxPageHeading { title: tr-s[6]; subtitle: tr-s[99]; }
+                                HorizontalLayout {
+                                    spacing: 6px; alignment: start;
+                                    for label[index] in [tr-s[100], tr-s[101], tr-s[102], tr-s[103], tr-s[104], tr-s[105]] : FxSettingsTab {
+                                        label: label;
+                                        selected: root.settings-tab == index;
+                                        clicked => { root.settings-tab = index; }
+                                    }
+                                }
+                                // Preferences scroll inside the pane, keeping the title and tabs fixed.
+                                settings-scroll := ScrollView {
+                                    vertical-stretch: 1; min-height: 0px;
+                                    horizontal-scrollbar-policy: always-off;
+                                    VerticalLayout {
+                                    width: settings-scroll.visible-width;
+                                    spacing: 16px;
+                                    opacity: root.panel-progress;
+                                if root.settings-tab == 5 : Surface {
+                                    VerticalLayout {
+                                        padding: 16px; spacing: 12px;
+                                        FxSettingRow {
+                                            title: tr-s[106]; subtitle: root.update-detail; control-width: 156px;
+                                            FxButton { text: tr-s[107]; enabled: !root.busy; clicked => { root.update-check-now(); } }
+                                        }
+                                        FxToggleCard { title: tr-s[108]; subtitle: tr-s[109]; selected: root.auto-update-check; kind: 1; toggled => { root.auto-update-check = !root.auto-update-check; root.preferences-changed(); } }
+                                        Text { vertical-stretch: 0; text: root.update-status; color: root.update-available ? Theme.accent : Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                                        HorizontalLayout {
+                                            alignment: start; spacing: 8px;
+                                            FxButton { text: tr-s[110]; primary: true; enabled: root.update-downloadable; clicked => { root.update-download(); } }
+                                            FxButton { text: tr-s[9]; enabled: root.update-available; clicked => { root.update-dismiss(); } }
+                                        }
+                                    }
+                                }
+                                if root.settings-tab == 0 : Surface {
+                                    VerticalLayout {
+                                        padding: 16px; spacing: 16px;
+                                        FxFieldRow { label: tr-s[111]; hint: tr-s[112]; state: root.base-state; found-label: tr-s[177]; missing-label: tr-s[178]; empty-hint: tr-s[179]; browse-label: tr-s[180]; value <=> root.base-path; browse => { root.browse(0); } edited => { root.path-changed(); } }
+                                        FxFieldRow { label: tr-s[113]; hint: "01.02"; state: root.update-state; found-label: tr-s[177]; missing-label: tr-s[178]; empty-hint: tr-s[179]; browse-label: tr-s[180]; value <=> root.update-path; browse => { root.browse(1); } edited => { root.path-changed(); } }
+                                        Text { vertical-stretch: 0; text: tr-s[114]; color: Theme.text; font-size: 12px; }
+                                        Rectangle {
+                                            height: 156px;
+                                            border-radius: 6px;
+                                            border-width: 1px;
+                                            border-color: Theme.stroke;
+                                            background: transparent;
+                                            build-scroll := ScrollView {
+                                                x: 1px; y: 1px;
+                                                width: parent.width - 2px;
+                                                height: parent.height - 2px;
+                                                horizontal-scrollbar-policy: always-off;
+                                                VerticalLayout {
+                                                    width: build-scroll.visible-width;
+                                                    padding: 4px;
+                                                    spacing: 2px;
+                                                    if root.builds.length == 0 : Text { height: 40px; vertical-alignment: center; horizontal-alignment: center; text: tr-s[115]; color: Theme.text-secondary; font-size: 12px; }
+                                                    for build[i] in root.builds : Rectangle {
+                                                        height: 34px;
+                                                        border-radius: 4px;
+                                                        background: row.pressed ? #C5294938 : build.selected ? #C5294922 : row.has-hover ? #FFFFFF10 : transparent;
+                                                        Text { x: 10px; y: 2px; width: parent.width - 150px; height: 16px; text: build.name; color: Theme.text; font-size: 12px; overflow: elide; }
+                                                        Text { x: 10px; y: 17px; width: parent.width - 150px; height: 14px; text: build.detail; color: Theme.text-secondary; font-size: 11px; overflow: elide; }
+                                                        Text { x: parent.width - 144px; y: 0px; width: 132px; height: parent.height; horizontal-alignment: right; vertical-alignment: center; text: build.version; color: build.selected ? Theme.accent : Theme.text-tertiary; font-size: 11px; }
+                                                        row := TouchArea { mouse-cursor: pointer; clicked => { root.build-picked(i); } }
+                                                        accessible-role: list-item;
+                                                        accessible-label: build.name;
+                                                        accessible-checked: build.selected;
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            Text { vertical-stretch: 0; vertical-alignment: center; horizontal-stretch: 1; text: root.builds-status; color: Theme.text-secondary; font-size: 12px; overflow: elide; }
+                                            FxButton { text: tr-s[116]; clicked => { root.builds-refresh(); } }
+                                            FxButton { text: tr-s[117]; primary: true; clicked => { root.update-download(); } }
+                                        }
+                                        HorizontalLayout {
+                                            spacing: 8px;
+                                            Text {
+                                                vertical-stretch: 0; vertical-alignment: center; horizontal-stretch: 1;
+                                                text: root.paths-dirty ? tr-s[118] : tr-s[119];
+                                                color: root.paths-dirty ? Theme.warning : Theme.text-secondary;
+                                                font-size: 12px; overflow: elide;
+                                            }
+                                            FxButton { text: tr-s[120]; enabled: root.paths-dirty && !root.busy && !root.running; clicked => { root.discard-paths(); } }
+                                            FxButton { text: tr-s[121]; enabled: root.paths-dirty && !root.busy && !root.running; clicked => { root.save-settings(); } }
+                                        }
+                                    }
+                                }
+                                if root.settings-tab == 1 : Surface {
+                                    VerticalLayout {
+                                        padding: 0px; spacing: 0px;
+                                        FxSettingRow {
+                                            title: tr-s[122]; subtitle: root.gpu-mode == 1 ? tr-s[123] : root.launch-mode == 1 ? tr-s[124] : root.launch-mode == 2 ? tr-s[125] : tr-s[126];
+                                            ComboBox { model: [tr-s[127], tr-s[128], tr-s[129]]; enabled: root.gpu-mode != 1; current-index: root.gpu-mode == 1 ? 1 : root.launch-mode; selected(value) => { root.set-launch-mode(self.current-index); } }
+                                        }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxSettingRow {
+                                            title: tr-s[130];
+                                            subtitle: root.gpu-mode == 1 ? tr-s[131] : root.gpu-mode == 2 ? tr-s[132] : root.gpu-mode == 3 ? tr-s[133] : tr-s[134];
+                                            ComboBox { model: [tr-s[135], tr-s[136], tr-s[137], tr-s[138]]; current-index <=> root.gpu-mode; selected(value) => { root.preferences-changed(); } }
+                                        }
+                                        VerticalLayout {
+                                            padding-left: 16px; padding-right: 16px; padding-top: 8px; padding-bottom: 8px; spacing: 6px;
+                                            Text { text: root.gpu-compatibility; color: root.gpu-supported ? Theme.text-secondary : Theme.warning; font-size: 12px; wrap: word-wrap; }
+                                            Text { text: tr-s[139]; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                                        }
+                                        FxToggleCard { title: tr-s[140]; subtitle: root.gpu-mode != 0 ? tr-s[141] : tr-s[142]; selected: root.lazy-cache || root.gpu-mode != 0; enabled: root.gpu-mode == 0; kind: 2; toggled => { root.lazy-cache = !root.lazy-cache; root.preferences-changed(); } }
+                                        FxToggleCard { title: tr-s[143]; subtitle: root.launch-mode == 2 ? tr-s[144] : tr-s[145]; selected: root.capture-enabled || root.launch-mode == 2; enabled: root.launch-mode != 2; kind: 2; toggled => { root.capture-set(!root.capture-enabled); } }
+                                        FxToggleCard { title: tr-s[146]; subtitle: tr-s[147]; selected: root.cfg-show-splash; enabled: root.emulator-editable; kind: 1; toggled => { root.emulator-toggle("General.show_splash", !root.cfg-show-splash); } }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxToggleCard { title: tr-s[148]; subtitle: tr-s[149]; selected: root.observed-clock; enabled: root.fps-120-selected; kind: 0; toggled => { root.observed-set(!root.observed-clock); } }
+                                    }
+                                }
+                                if root.settings-tab == 2 : Surface {
+                                    VerticalLayout {
+                                        padding: 0px; spacing: 0px;
+                                        FxSettingRow {
+                                            title: tr-s[150]; subtitle: tr-s[151]; control-width: 216px;
+                                            ComboBox { model: root.cfg-languages; enabled: root.emulator-editable; current-index <=> root.cfg-console-language; selected(value) => { root.emulator-index("General.console_language", root.cfg-console-language); } }
+                                        }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxSettingRow {
+                                            title: tr-s[152]; subtitle: tr-s[153]; control-width: 216px;
+                                            ComboBox { model: root.launcher-language-names; current-index <=> root.launcher-language; selected(value) => { root.launcher-language-set(self.current-index); } }
+                                        }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxToggleCard { title: tr-s[154]; subtitle: tr-s[155]; selected: !root.disable-animations; kind: 1; toggled => { root.disable-animations = !root.disable-animations; root.preferences-changed(); } }
+                                        FxToggleCard { title: tr-s[156]; subtitle: tr-s[157]; selected: root.fluid-enabled; kind: 1; toggled => { root.fluid-enabled = !root.fluid-enabled; root.preferences-changed(); } }
+                                        FxToggleCard { title: tr-s[158]; subtitle: tr-s[159]; selected: root.discord-presence; kind: 2; toggled => { root.discord-presence = !root.discord-presence; root.preferences-changed(); } }
+                                    }
+                                }
+                                if root.settings-tab == 3 : Surface {
+                                    VerticalLayout {
+                                        padding: 0px; spacing: 0px;
+                                        FxSettingRow {
+                                            title: tr-s[160]; control-width: 248px;
+                                            Slider {
+                                                minimum: 0; maximum: 500; value <=> root.cfg-volume-value;
+                                                enabled: root.emulator-editable;
+                                                changed(value) => { root.cfg-volume-pending = false; root.cfg-volume-pending = true; }
+                                            }
+                                            Text { width: 40px; horizontal-alignment: right; vertical-alignment: center; text: "" + round(root.cfg-volume-value); color: Theme.text; font-size: 12px; }
+                                        }
+                                        Rectangle { height: 1px; background: Theme.divider; }
+                                        FxSettingRow {
+                                            title: tr-s[161]; control-width: 216px;
+                                            ComboBox { model: root.cfg-audio-backends; enabled: root.emulator-editable; current-index <=> root.cfg-audio-backend; selected(value) => { root.emulator-index("Audio.audio_backend", root.cfg-audio-backend); } }
+                                        }
+                                    }
+                                }
+                                if root.settings-tab == 4 : Surface {
+                                    VerticalLayout {
+                                        padding: 16px; spacing: 12px;
+                                        Text { vertical-stretch: 0; text: root.data-path; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                                        HorizontalLayout {
+                                            alignment: start; spacing: 8px;
+                                            FxButton { text: tr-s[162]; icon: @image-url("icons/folder.svg"); clicked => { root.open-data(); } }
+                                            FxButton { text: tr-s[163]; enabled: !root.busy && !root.running; clicked => { root.import-saves-requested(); } }
+                                            if root.can-recover : FxButton { text: tr-s[164]; enabled: !root.busy && !root.running; clicked => { root.recovery-requested(); } }
+                                            if root.can-recover : FxButton { text: tr-s[165]; enabled: !root.busy && !root.running; clicked => { root.discard-recovery(); } }
+                                        }
+                                        Text { vertical-stretch: 0; text: tr-s[166]; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                                    }
+                                }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Rectangle {
+                        height: 72px;
+                        background: Theme.sidebar;
+                        Rectangle { height: 1px; background: Theme.divider; }
+                        if root.busy : ProgressIndicator { x: 0; y: 0; width: parent.width; height: 2px; indeterminate: !root.disable-animations; progress: 0.5; }
+                        HorizontalLayout {
+                            padding-left: 16px; padding-right: 16px; spacing: 10px;
+                            VerticalLayout {
+                                alignment: center; spacing: 4px; horizontal-stretch: 1; min-width: 0px;
+                                Text { vertical-stretch: 0; text: root.status-message; color: root.state-kind == 3 ? Theme.danger : Theme.text; font-size: 12px; overflow: elide; min-width: 0px; }
+                                Text { vertical-stretch: 0; text: root.status-detail; color: Theme.text-secondary; font-size: 12px; overflow: elide; min-width: 0px; }
+                            }
+                            VerticalLayout {
+                                alignment: center; horizontal-stretch: 0;
+                                FxButton {
+                                    text: root.can-recover ? tr-s[167] : tr-s[168];
+                                    width: 96px; enabled: !root.busy && !root.running;
+                                    clicked => { if root.can-recover { root.recovery-requested(); } else { root.verify-requested(); } }
+                                }
+                            }
+                            VerticalLayout {
+                                alignment: center; horizontal-stretch: 0;
+                                HorizontalLayout {
+                                    spacing: 4px;
+                                    FxButton {
+                                        // While an operation runs the primary slot becomes the
+                                        // cancellable action, so closing mid-verify always has a
+                                        // clear escape without adding another footer button.
+                                        text: root.busy ? tr-s[169] : root.running ? tr-s[170] : root.launch-label;
+                                        primary: !root.busy; width: 168px;
+                                        enabled: root.busy || root.launch-enabled;
+                                        clicked => { if root.busy { root.cancel-requested(); } else { root.launch-requested(); } }
+                                    }
+                                    Rectangle {
+                                        width: 32px; height: 32px;
+                                        border-radius: 5px;
+                                        border-width: 1px;
+                                        border-color: #FFFFFF18;
+                                        background: !root.profile-picker-enabled ? #FFFFFF08 : picker-area.pressed ? #8F1B35 : picker-area.has-hover ? #DA3657 : #C52949;
+                                        animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                                        Image {
+                                            width: 14px; height: 14px;
+                                            x: (parent.width - self.width) / 2; y: (parent.height - self.height) / 2;
+                                            source: @image-url("icons/chevron-down.svg");
+                                            colorize: root.profile-picker-enabled ? Theme.text : Theme.text-disabled;
+                                        }
+                                        picker-area := TouchArea {
+                                            enabled: root.profile-picker-enabled;
+                                            mouse-cursor: root.profile-picker-enabled ? pointer : default;
+                                            clicked => { root.profile-menu-open = !root.profile-menu-open; }
+                                        }
+                                        accessible-role: button;
+                                        accessible-label: tr-s[171];
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        // Escolha de perfil a partir do chevron do botao de iniciar: abre acima
+        // do rodape, com no maximo oito linhas antes de rolar.
+        if root.profile-menu-progress > 0.001 : Rectangle {
+            background: transparent;
+            menu-dismiss := TouchArea { clicked => { root.profile-menu-open = false; } }
+            Rectangle {
+                width: 244px;
+                height: min(8, root.profile-names.length) * 32px + 12px;
+                x: parent.width - 16px - self.width;
+                y: parent.height - 84px - self.height - (1 - root.profile-menu-progress) * 8px;
+                opacity: root.profile-menu-progress;
+                background: Theme.card;
+                border-radius: 6px;
+                border-width: 1px;
+                border-color: #FFFFFF18;
+                menu-scroll := ScrollView {
+                    x: 1px; y: 1px;
+                    width: parent.width - 2px;
+                    height: parent.height - 2px;
+                    horizontal-scrollbar-policy: always-off;
+                    VerticalLayout {
+                        width: menu-scroll.visible-width;
+                        padding: 6px;
+                        spacing: 2px;
+                        for name[index] in root.profile-names : Rectangle {
+                            height: 30px;
+                            border-radius: 4px;
+                            background: option.pressed ? #C5294938 : index == root.profile-index ? #C5294922 : option.has-hover ? #FFFFFF12 : transparent;
+                            animate background { duration: Theme.animations-enabled ? Theme.motion-quick : 0ms; easing: ease-out; }
+                            Text {
+                                x: 10px; width: parent.width - 34px; height: parent.height;
+                                text: name; vertical-alignment: center; overflow: elide;
+                                color: index == root.profile-index ? Theme.text : Theme.text-secondary;
+                                font-size: 12px;
+                            }
+                            if index == root.profile-index : Image {
+                                x: parent.width - 22px; y: (parent.height - 12px) / 2;
+                                width: 12px; height: 12px;
+                                source: @image-url("icons/check.svg");
+                                colorize: Theme.accent;
+                            }
+                            option := TouchArea {
+                                mouse-cursor: pointer;
+                                clicked => { root.profile-index = index; root.profile-picked(name); root.profile-menu-open = false; }
+                            }
+                            accessible-role: list-item;
+                            accessible-label: name;
+                            accessible-checked: index == root.profile-index;
+                        }
+                    }
+                }
+            }
+        }
+
+        if root.dialog-progress > 0.001 : Rectangle {
+            background: transparent;
+            Rectangle { background: #000000; opacity: root.dialog-progress * 0.55; }
+            TouchArea { }
+            Rectangle {
+                width: 420px;
+                height: dialog-content.min-height;
+                x: (parent.width - self.width) / 2;
+                y: (parent.height - self.height) / 2 + (1 - root.dialog-progress) * 12px;
+                opacity: root.dialog-progress;
+                border-radius: 8px;
+                background: Theme.card;
+                border-width: 1px; border-color: #FFFFFF14;
+                dialog-content := VerticalLayout {
+                    padding: 24px; spacing: 16px;
+                    Text { vertical-stretch: 0; text: tr-s[172]; color: Theme.text; font-size: 20px; font-weight: 600; }
+                    Text { vertical-stretch: 0; text: tr-s[173]; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                    LineEdit { text <=> root.new-profile-name; placeholder-text: tr-s[174]; accepted => { root.confirm-save-profile(); } }
+                    if root.profile-save-error != "" : Text { vertical-stretch: 0; text: root.profile-save-error; color: Theme.danger; font-size: 12px; wrap: word-wrap; }
+                    Text { vertical-stretch: 0; text: tr-s[175]; color: Theme.text-secondary; font-size: 12px; wrap: word-wrap; }
+                    HorizontalLayout {
+                        alignment: end; spacing: 8px;
+                        FxButton { text: tr-s[169]; clicked => { root.close-save-profile(); } }
+                        FxButton { text: tr-s[176]; primary: true; clicked => { root.confirm-save-profile(); } }
+                    }
+                }
+            }
+        }
+    }
+    }
+}
+
+
+
