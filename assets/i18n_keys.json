@@ -114,7 +114,7 @@
   "CUSA01623",
   "Atualização",
   "Builds do shadPS4",
-  "Nenhuma build encontrada. Clique em Atualizar lista ou Baixar última versão.",
+  "Nenhuma build encontrada. Clique em Atualizar lista.",
   "Atualizar lista",
   "Baixar última versão",
   "Alterações não salvas",
@@ -182,5 +182,8 @@
   "Procurar",
   " · Oculto",
   "Desbloqueado",
-  "Bloqueado"
+  "Bloqueado",
+  "Usar",
+  "Em uso",
+  "Baixando..."
 ]
