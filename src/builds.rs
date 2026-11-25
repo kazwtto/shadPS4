@@ -20,10 +20,20 @@ pub struct Version {
 
 impl Version {
     pub fn parse(text: &str) -> Option<Self> {
-        let cleaned = text
-            .trim()
-            .trim_start_matches(|c| c == 'v' || c == 'V')
-            .trim_start_matches(|c| c == '.' || c == '-' || c == '_');
+        let trimmed = text.trim();
+        let cleaned = match trimmed.as_bytes().first().copied() {
+            Some(b'v' | b'V' | b'a' | b'A' | b'b' | b'B')
+                if trimmed
+                    .as_bytes()
+                    .get(1)
+                    .map(|next| next.is_ascii_digit() || matches!(next, b'.' | b'-' | b'_'))
+                    .unwrap_or(false) =>
+            {
+                &trimmed[1..]
+            }
+            _ => trimmed,
+        }
+        .trim_start_matches(|c| c == '.' || c == '-' || c == '_');
         if cleaned.is_empty() {
             return None;
         }
@@ -177,6 +187,7 @@ mod tests {
 
     #[test]
     fn versions_come_from_the_file_name() {
+        assert_eq!(version_from_name("a0.0.1.exe").unwrap().label(), "0.0.1");
         assert_eq!(version_from_name("shadgow3-0.0.1.exe").unwrap().label(), "0.0.1");
         assert_eq!(version_from_name("shadPS4-win64-qt-v.0.21.0.zip").unwrap().label(), "0.21.0");
         assert_eq!(version_from_name("shadps4_1.2.exe").unwrap().label(), "1.2");

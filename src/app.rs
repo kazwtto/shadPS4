@@ -235,6 +235,8 @@ pub struct AppController {
     last_alive_check: Cell<Option<std::time::Instant>>,
     /// Builds lidas da pasta do repositório, na ordem mostrada.
     builds: RefCell<Vec<BuildEntry>>,
+    /// Builds remotas disponíveis no GitHub e ainda não baixadas, exibidas após as locais.
+    remote_builds: RefCell<Vec<updates::RemoteBuild>>,
     /// Pasta criada pelo próprio launcher onde as builds são instaladas.
     builds_dir: RefCell<PathBuf>,
     /// Última publicação conhecida e o estado das consultas.
@@ -284,6 +286,7 @@ impl AppController {
             game_pid: Cell::new(None),
             last_alive_check: Cell::new(None),
             builds: RefCell::new(Vec::new()),
+            remote_builds: RefCell::new(Vec::new()),
             builds_dir: RefCell::new(PathBuf::new()),
             update_state: RefCell::new(UpdateState::default()),
             last_update_check: Cell::new(None),
@@ -505,6 +508,7 @@ impl AppController {
             self.ui.on_builds_refresh(move || {
                 if let Some(this) = weak.upgrade() {
                     this.refresh_builds();
+                    this.check_updates();
                 }
             });
         }
@@ -880,6 +884,7 @@ impl AppController {
                 }
                 self.persist_update_state();
                 self.publish_update();
+                self.refresh_builds();
             }
             BgEvent::UpdateInstalled { result } => {
                 self.update_state.borrow_mut().installing = false;
@@ -2955,20 +2960,40 @@ impl AppController {
 
     fn refresh_builds(&self) {
         let directory = self.builds_dir.borrow().clone();
-        let value = directory.display().to_string();
-        let (status, entries) = match builds::list(&directory) {
-            Ok(listed) => {
-                let status = match listed.len() {
-                    0 => "Nenhuma build baixada ainda.".to_string(),
-                    1 => format!("1 build nesta pasta: {value}"),
-                    count => format!("{count} builds nesta pasta: {value}"),
-                };
-                (status, listed)
+        let (local_error, entries) = match builds::list(&directory) {
+            Ok(listed) => (None, listed),
+            Err(error) => (Some(format!("{error:#}")), Vec::new()),
+        };
+        let (remote_all, checking) = {
+            let state = self.update_state.borrow();
+            (state.remote.clone(), state.checking)
+        };
+        let remote_only = remote_all
+            .into_iter()
+            .filter(|remote| {
+                let sanitized = updates::sanitize(&remote.name);
+                !entries.iter().any(|local| {
+                    local.name.eq_ignore_ascii_case(&remote.name)
+                        || local.name.eq_ignore_ascii_case(&sanitized)
+                })
+            })
+            .collect::<Vec<_>>();
+        let status = if let Some(error) = local_error {
+            error
+        } else {
+            match (entries.len(), remote_only.len()) {
+                (0, 0) if checking => "Consultando builds no GitHub…".to_string(),
+                (0, 0) => "Nenhuma build encontrada. Clique em Atualizar lista ou Baixar última versão.".to_string(),
+                (0, 1) => "1 build disponível no GitHub (clique para baixar).".to_string(),
+                (0, r) => format!("{r} builds disponíveis no GitHub (clique para baixar)."),
+                (1, 0) => "1 build instalada.".to_string(),
+                (l, 0) => format!("{l} builds instaladas."),
+                (1, 1) => "1 build instalada · 1 disponível no GitHub.".to_string(),
+                (l, r) => format!("{l} builds instaladas · {r} disponíveis no GitHub."),
             }
-            Err(error) => (format!("{error:#}"), Vec::new()),
         };
         let selected = self.ui.get_executable_path().trim().to_string();
-        let items = entries
+        let mut items = entries
             .iter()
             .map(|entry| BuildItem {
                 name: entry.name.clone().into(),
@@ -2982,6 +3007,15 @@ impl AppController {
                 selected: !selected.is_empty() && entry.path == Path::new(&selected),
             })
             .collect::<Vec<_>>();
+        for remote in &remote_only {
+            items.push(BuildItem {
+                name: remote.name.clone().into(),
+                detail: format!("{} · Disponível no GitHub (clique para baixar)", remote.size_label())
+                    .into(),
+                version: remote.version_label().into(),
+                selected: false,
+            });
+        }
         let label = Path::new(&selected)
             .file_name()
             .and_then(|name| name.to_str())
@@ -2991,6 +3025,7 @@ impl AppController {
         self.ui.set_builds_status(status.into());
         self.ui.set_builds(ModelRc::new(VecModel::from(items)));
         *self.builds.borrow_mut() = entries;
+        *self.remote_builds.borrow_mut() = remote_only;
     }
 
     fn pick_build(&self, index: i32) {
@@ -3003,20 +3038,61 @@ impl AppController {
             );
             return;
         }
-        let Some(entry) = self.builds.borrow().get(index.max(0) as usize).cloned() else {
+        let idx = index.max(0) as usize;
+        let local_len = self.builds.borrow().len();
+        if idx < local_len {
+            let Some(entry) = self.builds.borrow().get(idx).cloned() else {
+                return;
+            };
+            self.ui
+                .set_executable_path(entry.path.display().to_string().into());
+            self.refresh_builds();
+            self.on_path_changed();
+            self.set_status(
+                0,
+                "Pronto",
+                "Build selecionada.",
+                &format!("{} · {}", entry.name, entry.size_label()),
+            );
+            self.log_launcher(&format!("Build selecionada: {}", entry.path.display()));
+            return;
+        }
+        let Some(remote) = self.remote_builds.borrow().get(idx - local_len).cloned() else {
             return;
         };
+        self.download_remote_build(remote);
+    }
+
+    fn download_remote_build(&self, build: updates::RemoteBuild) {
+        if self.update_state.borrow().installing {
+            return;
+        }
+        let directory = self.builds_dir.borrow().clone();
+        if let Err(error) = builds::ensure_dir(&directory) {
+            self.set_status(
+                3,
+                "Erro",
+                "Não foi possível criar a pasta de builds.",
+                &format!("{error:#}"),
+            );
+            return;
+        }
+        self.update_state.borrow_mut().installing = true;
         self.ui
-            .set_executable_path(entry.path.display().to_string().into());
-        self.refresh_builds();
-        self.on_path_changed();
-        self.set_status(
-            0,
-            "Pronto",
-            "Build selecionada.",
-            &format!("{} · {}", entry.name, entry.size_label()),
-        );
-        self.log_launcher(&format!("Build selecionada: {}", entry.path.display()));
+            .set_builds_status(format!("Baixando {}…", build.name).into());
+        self.ui
+            .set_update_status(format!("Baixando {}…", build.name).into());
+        self.ui.set_update_downloadable(false);
+        self.set_status(1, "Baixando", &format!("Baixando {}…", build.name), &build.url);
+        let sender = self.event_sender.clone();
+        spawn_task(sender, move |sender| {
+            let result = updates::download_build(&build, &directory);
+            let _ = sender.send(BgEvent::UpdateInstalled {
+                result: result
+                    .map(|path| path.display().to_string())
+                    .map_err(|error| format!("{error:#}")),
+            });
+        });
     }
 
     fn update_store_path(&self) -> PathBuf {
@@ -3238,6 +3314,9 @@ impl AppController {
             );
             return;
         }
+        if self.update_state.borrow().installing {
+            return;
+        }
         let (release, remote) = {
             let state = self.update_state.borrow();
             (
@@ -3248,18 +3327,6 @@ impl AppController {
                 state.remote.first().cloned(),
             )
         };
-        if release.is_none() && remote.is_none() {
-            self.set_status(
-                2,
-                "Atenção",
-                "Nada publicado para baixar.",
-                "O repositório não tem release com pacote nem arquivos em builds/.",
-            );
-            return;
-        }
-        if self.update_state.borrow().installing {
-            return;
-        }
         let directory = self.builds_dir.borrow().clone();
         if let Err(error) = builds::ensure_dir(&directory) {
             self.set_status(3, "Erro", "Não foi possível criar a pasta de builds.", &format!("{error:#}"));
@@ -3267,14 +3334,31 @@ impl AppController {
         }
         self.update_state.borrow_mut().installing = true;
         self.ui
+            .set_builds_status("Baixando última versão do GitHub…".into());
+        self.ui
             .set_update_status("Baixando do repositório…".into());
         self.ui.set_update_downloadable(false);
+        self.set_status(1, "Baixando", "Consultando e baixando última build…", updates::DEFAULT_REPOSITORY);
+        let repo = updates::DEFAULT_REPOSITORY.to_string();
         let sender = self.event_sender.clone();
         spawn_task(sender, move |sender| {
-            let result = match (release, remote) {
-                (Some(release), _) => updates::download_release(&release, &directory),
-                (None, Some(build)) => updates::download_build(&build, &directory),
-                (None, None) => Err(anyhow::anyhow!("nada publicado para baixar")),
+            let remote = match remote {
+                Some(found) => Some(found),
+                None => updates::remote_builds(&repo).ok().and_then(|list| list.into_iter().next()),
+            };
+            let release = match release {
+                Some(found) => Some(found),
+                None => updates::latest_release(&repo)
+                    .ok()
+                    .flatten()
+                    .filter(|r| !r.asset_url.is_empty()),
+            };
+            let result = match (remote, release) {
+                (Some(build), _) => updates::download_build(&build, &directory),
+                (None, Some(release)) => updates::download_release(&release, &directory),
+                (None, None) => Err(anyhow::anyhow!(
+                    "O repositório não tem arquivos em builds/ nem release com pacote do emulador."
+                )),
             };
             let _ = sender.send(BgEvent::UpdateInstalled {
                 result: result
