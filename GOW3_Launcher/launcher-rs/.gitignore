@@ -1,0 +1,25 @@
+# Build outputs & binaries
+/target/
+/dist/
+*.exe
+*.pdb
+*.zip
+
+# Runtime data & logs
+/data/
+/dados/
+*.log
+
+# Review, AI, study notes, screenshots & scratch files
+/screenshots/
+/.backup-*/
+/.smoke-data/
+/.startup-review-*/
+/.ui-review-data/
+/examples/
+/tools/
+/README.md
+/PLANO_*.md
+/REVISAO_*.md
+/ABRIR_PREVIA.cmd
+/INICIAR*.cmd

@@ -1,0 +1,28 @@
+import { Palette } from "std-widgets.slint";
+
+export global Theme {
+    out property <color> bg: #272727;
+    out property <color> sidebar: #202020;
+    out property <color> card: #2D2D2D;
+    out property <color> stroke: #00000026;
+    out property <color> divider: #FFFFFF0A;
+    out property <color> text: #FFFFFF;
+    out property <color> text-secondary: #CECECE;
+    out property <color> text-tertiary: #A6A6A6;
+    out property <color> text-disabled: #7A7A7A;
+    in-out property <bool> animations-enabled: true;
+    // Motion tokens: every transition shares these durations and travel so the
+    // whole launcher feels like one system instead of per-widget timings.
+    out property <duration> motion-quick: 110ms;
+    out property <duration> motion-base: 180ms;
+    out property <duration> motion-page: 280ms;
+    out property <duration> motion-dialog: 200ms;
+    out property <length> motion-travel: 26px;
+    in-out property <bool> keyboard-navigation: false;
+    out property <brush> accent: #C52949;
+    out property <color> success: #6CCB5F;
+    out property <color> warning: #FCE100;
+    out property <color> danger: #FF99A4;
+    out property <string> font: "Segoe UI";
+    out property <string> mono: "Cascadia Mono";
+}

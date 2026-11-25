@@ -1,0 +1,200 @@
+{
+  "schema_version": 1,
+  "package_version": "1.6",
+  "manifest_sha256": "46323CB92480D5CA63BF2D54BADB1359116C8FB75A86B027EA4A1681BC43147A",
+  "options": [
+    {
+      "id": "texture_fix",
+      "source": "Bug Fix - Texture Corruption Fix",
+      "label": "Correção de texturas / arena ampliada",
+      "group": "resolution",
+      "min_dmem": 2048
+    },
+    {
+      "id": "res_480",
+      "source": "Resolution Patch - 480p",
+      "label": "480p (854 × 480)",
+      "group": "resolution",
+      "min_dmem": 2048
+    },
+    {
+      "id": "res_720",
+      "source": "Resolution Patch - 720p",
+      "label": "720p (1280 × 720)",
+      "group": "resolution",
+      "min_dmem": 2048
+    },
+    {
+      "id": "res_1440",
+      "source": "Resolution Patch - 1440p",
+      "label": "1440p (2560 × 1440)",
+      "group": "resolution",
+      "min_dmem": 3072
+    },
+    {
+      "id": "res_1800",
+      "source": "Resolution Patch - 1800p",
+      "label": "1800p (3200 × 1800)",
+      "group": "resolution",
+      "min_dmem": 4608
+    },
+    {
+      "id": "res_4k",
+      "source": "Resolution Patch - 4K",
+      "label": "4K (3840 × 2160)",
+      "group": "resolution",
+      "min_dmem": 6144
+    },
+    {
+      "id": "fps_120",
+      "source": "Frame Rate Patch - 120 FPS",
+      "label": "120 FPS / VBlank 120",
+      "group": "fps",
+      "vblank": 120
+    },
+    {
+      "id": "skip_intro",
+      "source": "Skip Intro",
+      "label": "Pular logos iniciais"
+    },
+    {
+      "id": "skip_legacy",
+      "source": "Skip Any Video With X Button",
+      "label": "Pular vídeos com X (original cuesta)",
+      "group": "skip"
+    },
+    {
+      "id": "color_grading_off",
+      "source": "Astra v0.4 - Disable Color Grading",
+      "label": "Disable Color Grading (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "layered_fog_off",
+      "source": "Astra v0.5 - Disable Layered Fog",
+      "label": "Disable Layered Fog (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "dof_native_off",
+      "source": "Astra v0.5 - Disable Depth of Field",
+      "label": "Disable Depth of Field (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "bloom_native_off",
+      "source": "Astra v0.9 - Disable Bloom - producer state",
+      "label": "Bloom OFF — estado coerente (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "motion_blur_native_off",
+      "source": "Astra v0.5 - Disable Motion Blur - native inactive",
+      "label": "Disable Motion Blur - native inactive (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "camera_sway_off",
+      "source": "Astra v0.5 - Disable Camera Sway",
+      "label": "Disable Camera Sway (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "dynamic_shadows_native_off",
+      "source": "Astra v0.7 - Disable Dynamic Shadows - native inactive",
+      "label": "Sombras dinâmicas OFF — parcial (experimental)",
+      "experimental": true,
+      "gameplay_validated": false,
+      "group": "shadow_quality"
+    },
+    {
+      "id": "job_queue_pause",
+      "source": "Astra v0.8 - Job Queue Contention PAUSE",
+      "label": "CPU: fila de jobs com PAUSE (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "shadow_range_75",
+      "source": "Astra v1.0 - Shadow range 75 percent",
+      "label": "Alcance das sombras 75% (experimental)",
+      "group": "shadow_quality",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "shadow_range_50",
+      "source": "Astra v1.0 - Shadow range 50 percent",
+      "label": "Alcance das sombras 50% (experimental)",
+      "group": "shadow_quality",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "particles_soft_off",
+      "source": "Astra v1.1 - Particles soft OFF",
+      "label": "Partículas: suavização OFF (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "particles_distortion_off",
+      "source": "Astra v1.1 - Particles distortion OFF",
+      "label": "Partículas: distorção OFF (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "particles_rate_75",
+      "source": "Astra v1.2 - Automatic particle emission 75 percent",
+      "label": "Emissão global 75% · inclui combate (experimental)",
+      "group": "particle_rate",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "particles_rate_50",
+      "source": "Astra v1.2 - Automatic particle emission 50 percent",
+      "label": "Emissão global 50% · inclui combate (experimental)",
+      "group": "particle_rate",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "ssao_off",
+      "source": "Astra v1.3 - SSAO OFF - native preparation retained",
+      "label": "SSAO OFF (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "particle_halfres",
+      "source": "Astra v1.4 - Native half-resolution particle buffers",
+      "label": "Partículas: buffers ½ resolução (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "geometry_weights_simd",
+      "source": "Astra v1.5 - Exact SIMD geometry weights",
+      "label": "CPU: pesos de geometria SIMD (experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    },
+    {
+      "id": "native_lod_75",
+      "source": "Astra v1.6 - Authored empty-far LOD threshold 75 percent",
+      "label": "LOD nativo: limite 75% (qualidade experimental)",
+      "experimental": true,
+      "gameplay_validated": false
+    }
+  ],
+  "application_mode": "next_launch",
+  "gameplay_validated": false
+}
