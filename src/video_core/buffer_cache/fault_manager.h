@@ -21,7 +21,9 @@ public:
         return &fault_buffer;
     }
 
-    void ProcessFaultBuffer();
+    /// Collects the pages faulted by shaders. Scans only the part of the bitmap below
+    /// max_address, the end of the highest mapped guest range.
+    void ProcessFaultBuffer(VAddr max_address);
 
 private:
     Vulkan::Scheduler& scheduler;

@@ -279,7 +279,11 @@ TextureCache::TextureCache(const Vulkan::Instance& instance_, Vulkan::Scheduler&
     const CacheMemoryBudget budget{instance.GetTotalMemoryBudget(), TARGET_GC_THRESHOLD};
     pressure_gc_memory = budget.Threshold(1_GB, 60, DEFAULT_PRESSURE_GC_MEMORY);
     critical_gc_memory = budget.Threshold(512_MB, 20, DEFAULT_CRITICAL_GC_MEMORY);
-    trigger_gc_memory = budget.EarlyTrigger();
+    trigger_gc_memory = budget.EarlyTrigger(pressure_gc_memory);
+    LOG_INFO(Render_Vulkan,
+             "Texture cache GC: budget={} MiB, trigger={} MiB, pressure={} MiB, critical={} MiB",
+             budget.budget >> 20, trigger_gc_memory >> 20, pressure_gc_memory >> 20,
+             critical_gc_memory >> 20);
 }
 
 TextureCache::~TextureCache() {

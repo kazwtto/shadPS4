@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: Copyright 2025 shadPS4 Emulator Project
 // SPDX-License-Identifier: GPL-2.0-or-later
 
+#include <algorithm>
+
 #include "common/div_ceil.h"
 #include "common/logging/log.h"
 #include "video_core/buffer_cache/buffer_cache.h"
@@ -79,7 +81,7 @@ FaultManager::FaultManager(const Vulkan::Instance& instance, Vulkan::Scheduler& 
     device.destroyShaderModule(module);
 }
 
-void FaultManager::ProcessFaultBuffer() {
+void FaultManager::ProcessFaultBuffer(VAddr max_address) {
     if (u64 wait_tick = fault_areas[current_area]) {
         scheduler.Wait(wait_tick);
         scheduler.PopPendingOperations(true);
@@ -149,9 +151,16 @@ void FaultManager::ProcessFaultBuffer() {
     cmdbuf.bindPipeline(vk::PipelineBindPoint::eCompute, *fault_process_pipeline);
     cmdbuf.pushDescriptorSetKHR(vk::PipelineBindPoint::eCompute, *fault_process_pipeline_layout, 0,
                                 writes);
-    // 1 bit per page, 32 pages per workgroup
-    const u32 num_threads = caching_num_pages / 32;
-    const u32 num_workgroups = Common::DivCeil(num_threads, 64u);
+    // 1 bit per page, 32 pages per thread, 64 threads per workgroup. Only guest memory that is
+    // mapped can fault, so the scan stops at the end of the highest mapped range instead of
+    // covering the whole 1 TiB address space (32768 workgroups, an 8 MiB bitmap).
+    const u64 total_threads = caching_num_pages / 32;
+    const u64 total_workgroups = Common::DivCeil(total_threads, u64{64});
+    const u64 max_page = Common::DivCeil(max_address, caching_pagesize);
+    const u64 used_threads = Common::DivCeil(max_page, u64{32});
+    const u64 used_workgroups = Common::DivCeil(used_threads, u64{64});
+    const u32 num_workgroups =
+        static_cast<u32>(std::clamp<u64>(used_workgroups, u64{1}, total_workgroups));
     cmdbuf.dispatch(num_workgroups, 1, 1);
 
     cmdbuf.pipelineBarrier2(vk::DependencyInfo{

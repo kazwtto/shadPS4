@@ -25,6 +25,14 @@ bool IsImageAccessRedundant(const State& state, vk::ImageLayout layout,
     // dependency even if a feedback loop keeps exactly the same layout/access/stage tuple.
     // Check the last access, not sticky write history: read/read after a barrier stays cheap.
     const bool feedback_read = (state.access_mask & attachment_writes) && (access & shader_reads);
+    // Read after read in the same layout needs no barrier once the stages already saw the
+    // last write or layout change: there is nothing to make visible. Exact access matching
+    // alone made a read-only depth attachment that is also sampled ping-pong every draw.
+    constexpr auto all_writes = explicit_writes | attachment_writes;
+    if (state.layout == layout && !(access & all_writes) && !(state.access_mask & all_writes) &&
+        stages && (state.read_visible & stages) == stages) {
+        return true;
+    }
     return state.layout == layout && state.access_mask == access && stage_visible &&
            !(state.access_mask & explicit_writes) && !feedback_read;
 }

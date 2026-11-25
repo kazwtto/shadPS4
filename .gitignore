@@ -425,6 +425,8 @@ result
 # Local scratch data and downloaded archives
 /research/
 /src/src.zip
+/builds/
+/externals/MoltenVK/
 
 # Rust launcher build outputs and local runtime data
 /GOW3_Launcher/launcher-rs/target/
@@ -432,6 +434,15 @@ result
 /GOW3_Launcher/launcher-rs/dados/
 /GOW3_Launcher/launcher-rs/dist/
 /GOW3_Launcher/launcher-rs/screenshots/
+/GOW3_Launcher/launcher-rs/.backup-*/
 /GOW3_Launcher/launcher-rs/.startup-review-*/
 /GOW3_Launcher/launcher-rs/.ui-review-data/
 /GOW3_Launcher/launcher-rs/.smoke-data/
+/GOW3_Launcher/launcher-rs/examples/
+/GOW3_Launcher/launcher-rs/tools/
+/GOW3_Launcher/launcher-rs/*.exe
+/GOW3_Launcher/launcher-rs/*.zip
+/GOW3_Launcher/launcher-rs/*.log
+/GOW3_Launcher/launcher-rs/PLANO_*.md
+/GOW3_Launcher/launcher-rs/REVISAO_*.md
+/GOW3_Launcher/launcher-rs/README.md

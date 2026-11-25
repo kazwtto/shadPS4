@@ -1213,7 +1213,14 @@ void Rasterizer::Finish() {
 void Rasterizer::OnSubmit() {
     if (fault_process_pending) {
         fault_process_pending = false;
-        buffer_cache.ProcessFaultBuffer();
+        VAddr max_address = 0;
+        {
+            Common::RecursiveSharedLock lock{mapped_ranges_mutex};
+            if (!mapped_ranges.empty()) {
+                max_address = boost::icl::upper(mapped_ranges);
+            }
+        }
+        buffer_cache.ProcessFaultBuffer(max_address);
     }
     texture_cache.ProcessDownloadImages(VideoCore::TextureCache::DownloadContext{});
     texture_cache.RunGarbageCollector();
@@ -2544,8 +2551,9 @@ RenderState Rasterizer::BeginRendering(const GraphicsPipeline* pipeline) {
         // Leaving the writable layout would break the rendering scope now and again at the
         // next draw that writes.
         static const bool reuse_attachment_layout = [] {
+            // On by default; SHADPS4_ATTACHMENT_LAYOUT_REUSE=0 restores the old behavior.
             const char* value = std::getenv("SHADPS4_ATTACHMENT_LAYOUT_REUSE");
-            return value && value[0] == '1' && value[1] == '\0';
+            return !(value && value[0] == '0' && value[1] == '\0');
         }();
         const bool uniform_write_layout = image.backing->subresource_states.empty() &&
                                           image.backing->state.layout == write_layout;
@@ -2572,9 +2580,16 @@ RenderState Rasterizer::BeginRendering(const GraphicsPipeline* pipeline) {
                                     ? vk::ImageLayout::eDepthReadOnlyStencilAttachmentOptimal
                                 : has_stencil ? vk::ImageLayout::eDepthStencilReadOnlyOptimal
                                               : vk::ImageLayout::eDepthReadOnlyOptimal;
+        // A writable layout keeps write access even for a draw that does not write, so draws
+        // sharing it stay redundant. A read-only layout records a read only: recording a
+        // write made sampling the attachment in the same pass look like a feedback loop,
+        // forcing a barrier and a rendering scope break on every draw.
+        const bool attachment_written = new_layout == write_layout || stencil_write ||
+                                        is_depth_clear || is_stencil_clear;
         image.Transit(new_layout,
-                      vk::AccessFlagBits2::eDepthStencilAttachmentWrite |
-                          vk::AccessFlagBits2::eDepthStencilAttachmentRead,
+                      attachment_written ? vk::AccessFlagBits2::eDepthStencilAttachmentWrite |
+                                               vk::AccessFlagBits2::eDepthStencilAttachmentRead
+                                         : vk::AccessFlags2{vk::AccessFlagBits2::eDepthStencilAttachmentRead},
                       desc.view_info.range);
 
         state.width = std::min<u32>(state.width, image.info.size.width);

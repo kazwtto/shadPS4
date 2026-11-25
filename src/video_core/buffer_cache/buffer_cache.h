@@ -268,7 +268,7 @@ public:
     }
 
     /// Processes the fault buffer.
-    void ProcessFaultBuffer();
+    void ProcessFaultBuffer(VAddr max_address);
 
     /// Synchronizes all buffers in the specified range.
     void SynchronizeBuffersInRange(VAddr device_addr, u64 size);

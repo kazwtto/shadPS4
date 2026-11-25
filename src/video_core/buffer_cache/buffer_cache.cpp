@@ -2143,8 +2143,8 @@ BufferId BufferCache::CreateBuffer(VAddr device_addr, u32 wanted_size) {
     return new_buffer_id;
 }
 
-void BufferCache::ProcessFaultBuffer() {
-    fault_manager.ProcessFaultBuffer();
+void BufferCache::ProcessFaultBuffer(VAddr max_address) {
+    fault_manager.ProcessFaultBuffer(max_address);
 }
 
 void BufferCache::Register(BufferId buffer_id) {

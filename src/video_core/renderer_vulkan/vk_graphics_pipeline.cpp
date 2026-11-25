@@ -80,7 +80,18 @@ GraphicsPipeline::GraphicsPipeline(
       fetch_shader{std::move(fetch_shader_)} {
     vertex_plan_identity = next_vertex_plan_identity.fetch_add(1, std::memory_order_relaxed);
     const vk::Device device = instance.GetDevice();
+    // A fragment shader that does nothing observable and has no color attachment to write
+    // contributes only a pipeline stage. The vertex stage and the draw itself are kept, so
+    // depth/stencil results are unchanged. Dropping it from the stage list as well keeps its
+    // descriptors out of the layout and out of the per-draw resource binding.
+    const auto fragment_stage = u32(Shader::LogicalStage::Fragment);
+    const bool omit_empty_fragment = infos[fragment_stage] && key.mrt_mask == 0 &&
+                                     key.num_color_attachments == 0 &&
+                                     IsEmptyFragmentModule(modules[fragment_stage]);
     std::ranges::copy(infos, stages.begin());
+    if (omit_empty_fragment) {
+        stages[fragment_stage] = nullptr;
+    }
     std::ranges::copy(uniform_masks, uniform_buffer_masks.begin());
     if (fetch_shader) {
         for (const auto& attribute : fetch_shader->attributes) {
@@ -279,12 +290,6 @@ GraphicsPipeline::GraphicsPipeline(
     }
     stage = u32(Shader::LogicalStage::Fragment);
     if (infos[stage]) {
-        // A fragment shader that does nothing observable and has no color attachment to write
-        // contributes only a pipeline stage. The vertex stage and the draw itself are kept, so
-        // depth/stencil results are unchanged.
-        const bool omit_empty_fragment =
-            key.mrt_mask == 0 && key.num_color_attachments == 0 &&
-            IsEmptyFragmentModule(modules[stage]);
         if (omit_empty_fragment) {
             LOG_DEBUG(Render_Vulkan, "Omitting empty fragment stage from depth-only pipeline");
         } else {
@@ -501,6 +506,10 @@ GraphicsPipeline::GraphicsPipeline(
                              color_formats, infos, debug_str);
     }
     std::ranges::copy(runtime_stages, stages.begin());
+    if (omit_empty_fragment) {
+        // BindResources walks these stages every draw; an omitted fragment has nothing to bind.
+        stages[fragment_stage] = nullptr;
+    }
 }
 
 void GraphicsPipeline::CreateSquarePipeline(

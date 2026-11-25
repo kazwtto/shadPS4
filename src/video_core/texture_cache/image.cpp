@@ -419,8 +419,12 @@ static void RecordImageAccess(Image::State& state, vk::ImageLayout dst_layout,
             state.write_access = dst_mask & write_flags;
         }
         state.read_stages = {};
+        state.read_visible = {};
     } else {
         state.read_stages |= dst_stage;
+        // A layout transition is a write: only its destination stages are ordered after it.
+        state.read_visible =
+            state.layout == dst_layout ? state.read_visible | dst_stage : dst_stage;
     }
     state.pl_stage = state.layout == dst_layout && state.access_mask == dst_mask
                          ? state.pl_stage | dst_stage
@@ -509,6 +513,8 @@ static SHAD_NO_INLINE void AppendBarriersSlow(
                 last_state.write_stage |= state.write_stage;
                 last_state.write_access |= state.write_access;
                 last_state.read_stages |= state.read_stages;
+                // Visible to the whole image only where every subresource is.
+                last_state.read_visible &= state.read_visible;
             }
             last_state.pl_stage = dst_stage;
             subresource_states.clear();
@@ -516,6 +522,7 @@ static SHAD_NO_INLINE void AppendBarriersSlow(
             last_state.layout = dst_layout;
             last_state.access_mask = dst_mask;
             last_state.pl_stage = dst_stage;
+            last_state.read_visible = {};
         }
     } else { // Full resource transition
         transition(last_state, vk::ImageSubresourceRange{

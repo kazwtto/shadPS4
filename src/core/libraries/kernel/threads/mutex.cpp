@@ -14,7 +14,7 @@
 
 namespace Libraries::Kernel {
 
-static constexpr u32 MUTEX_ADAPTIVE_SPINS = 2000;
+static constexpr u32 MUTEX_ADAPTIVE_SPINS = 200;
 static std::mutex MutxStaticLock;
 
 #define THR_MUTEX_INITIALIZER ((PthreadMutex*)NULL)

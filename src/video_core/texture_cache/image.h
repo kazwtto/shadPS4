@@ -232,6 +232,9 @@ public:
         vk::PipelineStageFlags2 write_stage{};
         vk::AccessFlags2 write_access{};
         vk::PipelineStageFlags2 read_stages{};
+        /// Stages that read the image after its last write or layout change, each through a
+        /// barrier or an access that was already visible. A further read there needs none.
+        vk::PipelineStageFlags2 read_visible{};
     };
     struct BackingImage {
         UniqueImage image;

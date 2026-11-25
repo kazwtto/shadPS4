@@ -25,8 +25,16 @@ struct CacheMemoryBudget {
         return std::max(floor, std::min(by_vacancy, by_spacing));
     }
 
-    [[nodiscard]] constexpr u64 EarlyTrigger() const {
-        return (budget - std::min(budget, target)) / 2;
+    /// Usage below which garbage collection is skipped entirely. Budgets above the target keep
+    /// half of the excess. Budgets at or below the target (every integrated GPU and most
+    /// mid-range cards) used to get 0, so the collector ran on every submit and evicted images
+    /// idle for a few ticks even with plenty of memory free, forcing them to be hashed,
+    /// uploaded and detiled again on their next use. Half of the pressure threshold is the
+    /// floor: below it there is nothing worth reclaiming, and above it the gentle collection
+    /// still runs before pressure is reached.
+    [[nodiscard]] constexpr u64 EarlyTrigger(u64 pressure) const {
+        const u64 excess = (budget - std::min(budget, target)) / 2;
+        return std::max(excess, pressure / 2);
     }
 };
 

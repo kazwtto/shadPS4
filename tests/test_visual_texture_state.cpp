@@ -12,6 +12,7 @@ struct State {
     vk::PipelineStageFlags2 pl_stage{};
     vk::AccessFlags2 access_mask{};
     vk::ImageLayout layout = vk::ImageLayout::eGeneral;
+    vk::PipelineStageFlags2 read_visible{};
 };
 constexpr auto ColorWrite = vk::AccessFlagBits2::eColorAttachmentWrite;
 constexpr auto DepthWrite = vk::AccessFlagBits2::eDepthStencilAttachmentWrite;

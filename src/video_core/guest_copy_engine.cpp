@@ -44,7 +44,7 @@ using Clock = std::chrono::steady_clock;
 }
 
 /// Time a waiter keeps polling for completion before parking.
-constexpr u64 WaiterSpinNs = 20'000;
+constexpr u64 WaiterSpinNs = 4'000;
 
 /// Adds to a counter only the producer thread writes, without a locked read-modify-write.
 void AddProducerStat(std::atomic<u64>& counter, u64 value) noexcept {
